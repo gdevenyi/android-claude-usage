@@ -41,7 +41,8 @@ Android 13 or later, and a Claude subscription (Pro or Max).
 
 ## Install
 
-No release yet. Build and sideload:
+Not on F-Droid yet — the repository is prepared for it, see
+[fdroid/README.md](fdroid/README.md). Until then, build and sideload:
 
 ```bash
 ./gradlew :app:assembleDebug

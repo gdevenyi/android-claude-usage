@@ -1,0 +1,19 @@
+Claude Usage shows how much of your Claude subscription you have spent, on your home screen and in the notification shade, so you can check it without opening anything.
+
+Home-screen widget
+
+The widget adapts to the size you give it. At one row it is just the two headline percentages. Give it more room and it adds labelled progress bars, then reset countdowns, then the per-model breakdown and your plan. It drops detail rather than clipping it.
+
+Ongoing notification
+
+The same numbers in the shade, with progress bars. Expand it for both windows with their reset times and the per-model breakdown.
+
+Both surfaces refresh in the background every 15 minutes, and tapping either one refreshes immediately. Percentages are colour coded: green below 50%, amber below 80%, red above.
+
+Signing in
+
+The app signs in to Claude itself and holds its own credentials. It does not read, copy or need the credentials that Claude Code stores on your computer, and signing in here does not disturb your other Claude Code sessions.
+
+Note that this uses an OAuth flow that Anthropic has not documented for third parties. It works today; it could stop working if Anthropic changes it.
+
+Requires a Claude subscription (Pro or Max). The app talks only to Anthropic's servers, and your tokens stay in the app's private storage.

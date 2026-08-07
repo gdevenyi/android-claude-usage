@@ -1,0 +1,30 @@
+Categories:
+  - Development
+License: GPL-3.0-or-later
+AuthorName: gdevenyi
+AuthorWebSite: https://github.com/gdevenyi
+SourceCode: https://github.com/gdevenyi/android-claude-usage
+IssueTracker: https://github.com/gdevenyi/android-claude-usage/issues
+Changelog: https://github.com/gdevenyi/android-claude-usage/releases
+Donate: https://buymeacoffee.com/gdevenyi
+
+# The app is useless without Anthropic's hosted Claude service, and signing in
+# uses an OAuth flow Anthropic has not documented for third parties.
+AntiFeatures:
+  - NonFreeNet
+
+RepoType: git
+Repo: https://github.com/gdevenyi/android-claude-usage.git
+
+Builds:
+  - versionName: 0.1.0
+    versionCode: 1
+    commit: v0.1.0
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 0.1.0
+CurrentVersionCode: 1
