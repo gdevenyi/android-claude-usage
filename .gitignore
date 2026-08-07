@@ -3,3 +3,7 @@ build/
 local.properties
 *.apk
 .kotlin/
+
+# signing keys must never be committed
+*.jks
+*.keystore
