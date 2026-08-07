@@ -12,6 +12,29 @@ An Android port of the ideas in
 - Tap either one to refresh immediately. Otherwise it updates every 15
   minutes in the background.
 
+## Screenshots
+
+The widget shows everything at four rows — both windows with reset times, the
+per-model breakdown and your plan:
+
+<img src="screenshots/widget-4row.png" width="380" alt="Widget at four rows">
+
+Give it less room and it drops content rather than clipping it: the reset
+times go first, then the labels.
+
+<img src="screenshots/widget-3row.png" width="300" alt="Widget at three rows">
+<img src="screenshots/widget-2row.png" width="300" alt="Widget at two rows">
+<img src="screenshots/widget-1row.png" width="300" alt="Widget at one row">
+
+The notification carries the same numbers, collapsed and expanded:
+
+<img src="screenshots/notification-collapsed.png" width="440" alt="Collapsed notification">
+<img src="screenshots/notification-expanded.png" width="440" alt="Expanded notification">
+
+The app itself is only settings:
+
+<img src="screenshots/settings.png" width="330" alt="Settings screen">
+
 ## Requirements
 
 Android 13 or later, and a Claude subscription (Pro or Max).
