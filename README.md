@@ -42,7 +42,19 @@ Android 13 or later, and a Claude subscription (Pro or Max).
 ## Install
 
 Not on F-Droid yet — the repository is prepared for it, see
-[fdroid/README.md](fdroid/README.md). Until then, build and sideload:
+[fdroid/README.md](fdroid/README.md).
+
+Until then, every build produces an APK you can install. Tagged versions have
+them attached to the [release](https://github.com/gdevenyi/android-claude-usage/releases);
+for other commits, open the run under
+[Actions](https://github.com/gdevenyi/android-claude-usage/actions) and
+download the `apk` artifact.
+
+> A debug APK is signed with a key the CI runner generates for itself, so two
+> builds from different runs will not install over each other — uninstall
+> first. Set up signing (below) to get release APKs that upgrade cleanly.
+
+Or build it yourself:
 
 ```bash
 ./gradlew :app:assembleDebug
@@ -51,6 +63,22 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 You need the Android SDK; point `local.properties` at it with
 `sdk.dir=/path/to/Android/Sdk`.
+
+### Signing releases in CI
+
+Gradle leaves the release APK unsigned, and Android will not install it. To
+have CI sign it, create a keystore once and add four repository secrets:
+
+```bash
+keytool -genkey -v -keystore release.jks -alias claude-usage \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 release.jks   # paste as the KEYSTORE_BASE64 secret
+```
+
+`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. Keep the
+keystore file itself out of the repository — losing it means future releases
+can no longer upgrade installs of the old one. F-Droid does not need any of
+this; it signs with its own key.
 
 ## Logging in
 
