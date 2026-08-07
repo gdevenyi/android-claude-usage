@@ -77,6 +77,12 @@ Log in / log out, turn the ongoing notification on or off, and choose the
 refresh interval (15, 30 or 60 minutes — 15 is the shortest Android's
 background scheduler allows).
 
+## Support
+
+If this is useful to you:
+
+<a href="https://buymeacoffee.com/gdevenyi"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="48" alt="Buy me a coffee"></a>
+
 ## License
 
 GPL-3.0-or-later.
