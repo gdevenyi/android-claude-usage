@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="launcher_bg">#D97757</color>
+
+    <!-- Traffic lights for usage severity. Darker tones here for light
+         backgrounds; values-night carries the lighter pair. -->
+    <color name="usage_ok">#2E7D32</color>
+    <color name="usage_warn">#EF6C00</color>
+    <color name="usage_crit">#C62828</color>
+</resources>

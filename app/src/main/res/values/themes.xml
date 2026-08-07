@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dynamic colors are applied at runtime so the app follows the same
+         Material You scheme as the widget. -->
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar" />
+</resources>

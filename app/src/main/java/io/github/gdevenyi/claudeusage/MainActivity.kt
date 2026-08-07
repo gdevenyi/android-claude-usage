@@ -1,0 +1,146 @@
+package io.github.gdevenyi.claudeusage
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Bundle
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.color.DynamicColors
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
+import com.google.android.material.textfield.TextInputLayout
+
+class MainActivity : AppCompatActivity() {
+
+    private val intervals = listOf(15, 30, 60)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyToActivityIfAvailable(this)
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        // Edge-to-edge is mandatory since Android 15: inset the content ourselves.
+        val root = findViewById<View>(R.id.root)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
+        val store = Store(this)
+
+        findViewById<MaterialButton>(R.id.loginBtn).setOnClickListener {
+            val verifier = Auth.newVerifier()
+            store.pendingVerifier = verifier
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Auth.authorizeUrl(verifier))))
+            updateUi()
+        }
+
+        findViewById<MaterialButton>(R.id.submitBtn).setOnClickListener {
+            val input = findViewById<TextView>(R.id.codeInput)
+            val code = input.text.toString()
+            val verifier = store.pendingVerifier
+            if (code.isBlank() || verifier == null) {
+                Toast.makeText(this, "Start login first, then paste the code", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            it.isEnabled = false
+            Thread {
+                val err = try {
+                    Auth.exchangeCode(this, code, verifier)
+                    store.pendingVerifier = null
+                    null
+                } catch (e: Exception) {
+                    e.message
+                }
+                runOnUiThread {
+                    it.isEnabled = true
+                    if (err == null) {
+                        Toast.makeText(this, "Logged in", Toast.LENGTH_SHORT).show()
+                        input.text = ""
+                        getSystemService(InputMethodManager::class.java)
+                            .hideSoftInputFromWindow(input.windowToken, 0)
+                        RefreshWorker.schedule(this)
+                        RefreshWorker.refreshNow(this)
+                    } else {
+                        Toast.makeText(this, "Login failed: $err", Toast.LENGTH_LONG).show()
+                    }
+                    updateUi()
+                }
+            }.start()
+        }
+
+        findViewById<MaterialButton>(R.id.logoutBtn).setOnClickListener {
+            store.clearTokens()
+            store.cachedUsage = null
+            store.plan = ""
+            Notif.update(this)
+            RefreshWorker.refreshNow(this) // repaints widget to logged-out state
+            updateUi()
+        }
+
+        findViewById<MaterialSwitch>(R.id.notifSwitch).setOnCheckedChangeListener { _, checked ->
+            store.notifEnabled = checked
+            if (checked && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+            }
+            Notif.update(this)
+        }
+
+        val interval = findViewById<MaterialAutoCompleteTextView>(R.id.intervalInput)
+        interval.setText("${store.intervalMin} min", false)
+        interval.setOnItemClickListener { _, _, pos, _ ->
+            if (store.intervalMin != intervals[pos]) {
+                store.intervalMin = intervals[pos]
+                RefreshWorker.schedule(this)
+            }
+        }
+
+        RefreshWorker.schedule(this)
+        // An app upgrade kills the Glance session and leaves the widget stuck
+        // on its loading view; this repaints it. Sideloading makes that common.
+        RefreshWorker.refreshNow(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateUi()
+    }
+
+    override fun onRequestPermissionsResult(code: Int, perms: Array<out String>, results: IntArray) {
+        super.onRequestPermissionsResult(code, perms, results)
+        Notif.update(this)
+    }
+
+    private fun updateUi() {
+        val store = Store(this)
+        findViewById<TextView>(R.id.status).text = when {
+            store.authBroken -> "Session expired — log in again"
+            store.loggedIn -> listOfNotNull(
+                "Logged in",
+                store.plan.ifEmpty { null },
+                Usage.cached(this)
+                    ?.let { "session ${it.session?.pct ?: 0}%, weekly ${it.weekly?.pct ?: 0}%" },
+            ).joinToString(" · ")
+            else -> "Not logged in"
+        }
+        val needsLogin = !store.loggedIn || store.authBroken
+        val pasteVis = if (needsLogin && store.pendingVerifier != null) View.VISIBLE else View.GONE
+        findViewById<MaterialButton>(R.id.loginBtn).visibility =
+            if (needsLogin) View.VISIBLE else View.GONE
+        findViewById<MaterialButton>(R.id.logoutBtn).visibility =
+            if (store.loggedIn) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.codeHint).visibility = pasteVis
+        findViewById<TextInputLayout>(R.id.codeField).visibility = pasteVis
+        findViewById<MaterialButton>(R.id.submitBtn).visibility = pasteVis
+        findViewById<MaterialSwitch>(R.id.notifSwitch).isChecked = store.notifEnabled
+    }
+}
