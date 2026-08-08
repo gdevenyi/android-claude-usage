@@ -1,0 +1,9 @@
+New: usage history and run-out forecast.
+
+- Every refresh is logged on-device (3 weeks kept, deleted on logout).
+- The app charts session (24 h) and weekly/per-model (3 weeks) usage, with
+  the current trend extended as a dashed line once there is enough data.
+- The widget and notification warn when the trend reaches 100% before the
+  window resets.
+- Tapping the widget or notification now opens the app; the notification's
+  Refresh button and the widget's refresh icon update in place.

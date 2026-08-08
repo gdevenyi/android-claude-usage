@@ -12,8 +12,10 @@ import android.widget.CompoundButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -117,6 +119,7 @@ class MainActivity : AppCompatActivity() {
             store.clearTokens()
             store.cachedUsage = null
             store.plan = ""
+            History.clear(this)
             Notif.update(this)
             RefreshWorker.refreshNow(this) // repaints widget to logged-out state
             updateUi()
@@ -188,5 +191,37 @@ class MainActivity : AppCompatActivity() {
         sw.setOnCheckedChangeListener(null)
         sw.isChecked = store.notifEnabled
         sw.setOnCheckedChangeListener(onNotifToggle)
+        updateCharts()
+    }
+
+    private fun updateCharts() {
+        val now = System.currentTimeMillis()
+        val hist = History.readAll(this)
+        val preds = History.predictions(this, now)
+        val root = findViewById<View>(R.id.root)
+        val primary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorPrimary)
+        val tertiary = MaterialColors.getColor(root, com.google.android.material.R.attr.colorTertiary)
+        val grid = ColorUtils.setAlphaComponent(
+            MaterialColors.getColor(root, com.google.android.material.R.attr.colorOutline), 70
+        )
+        val label = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurfaceVariant)
+
+        findViewById<HistoryChartView>(R.id.sessionChart).show(
+            listOf(HistoryChartView.Series(hist["session"].orEmpty(), preds["session"], primary)),
+            24 * 3600_000L, now, "24 h ago", emptyList(), grid, label,
+        )
+
+        val modelKey = hist.keys.firstOrNull { it.contains("fable", ignoreCase = true) }
+            ?: (hist.keys - setOf("session", "weekly")).firstOrNull()
+        val weekly = mutableListOf(
+            HistoryChartView.Series(hist["weekly"].orEmpty(), preds["weekly"], primary)
+        )
+        modelKey?.let { weekly += HistoryChartView.Series(hist[it].orEmpty(), preds[it], tertiary) }
+        findViewById<TextView>(R.id.weeklyTitle).text =
+            if (modelKey != null) "Weekly & $modelKey — last 3 weeks" else "Weekly — last 3 weeks"
+        findViewById<HistoryChartView>(R.id.weeklyChart).show(
+            weekly, History.KEEP_MS, now, "21 d ago",
+            hist["weekly"].orEmpty().map { it.r }.distinct(), grid, label,
+        )
     }
 }

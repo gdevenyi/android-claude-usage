@@ -93,13 +93,19 @@ class UsageWidget : GlanceAppWidget() {
                     needsLogin = !store.loggedIn || store.authBroken,
                     d = Usage.cached(context),
                     plan = store.plan,
+                    preds = History.predictions(context),
                 )
             }
         }
     }
 
     @Composable
-    private fun Body(needsLogin: Boolean, d: Usage.Data?, plan: String) {
+    private fun Body(
+        needsLogin: Boolean,
+        d: Usage.Data?,
+        plan: String,
+        preds: Map<String, History.Prediction>,
+    ) {
         val size = LocalSize.current
         // Scale from width only. Scaling with height too would grow the
         // content faster than the space it has to fit in, so a taller widget
@@ -116,21 +122,21 @@ class UsageWidget : GlanceAppWidget() {
         val detailed = usable >= 215f * scale
         val showResets = usable >= 125f * scale
 
+        // The body always opens the app (that's where the charts are); the
+        // header's refresh icon keeps an in-place refresh at the detailed
+        // tier, and opening the app refreshes anyway.
         val root = GlanceModifier.fillMaxSize()
             .background(GlanceTheme.colors.widgetBackground)
             .cornerRadius(android.R.dimen.system_app_widget_background_radius)
             .padding(Space.MD.dp)
-            .clickable(
-                if (needsLogin) actionStartActivity<MainActivity>()
-                else actionRunCallback<RefreshAction>()
-            )
+            .clickable(actionStartActivity<MainActivity>())
 
         Column(modifier = root, verticalAlignment = Alignment.CenterVertically) {
             when {
                 needsLogin -> Hint("Tap to log in", scale)
-                d == null -> Hint("Tap to refresh", scale)
+                d == null -> Hint("Tap to open", scale)
                 usable < 80f * scale -> CompactRow(d, scale)
-                else -> Full(d, plan, scale, detailed, showResets)
+                else -> Full(d, plan, scale, detailed, showResets, preds)
             }
         }
     }
@@ -144,16 +150,17 @@ class UsageWidget : GlanceAppWidget() {
         scale: Float,
         detailed: Boolean,
         showResets: Boolean,
+        preds: Map<String, History.Prediction>,
     ) {
         if (detailed) {
             Header(plan, scale)
             Spacer(GlanceModifier.defaultWeight())
         }
 
-        BarBlock("Session (5h)", d.session, false, scale, detailed, showResets)
+        BarBlock("Session (5h)", d.session, false, scale, detailed, showResets, preds["session"])
         if (detailed) Spacer(GlanceModifier.defaultWeight())
         else Spacer(GlanceModifier.height((Space.MD * scale).dp))
-        BarBlock("Weekly (7d)", d.weekly, true, scale, detailed, showResets)
+        BarBlock("Weekly (7d)", d.weekly, true, scale, detailed, showResets, preds["weekly"])
 
         if (detailed) {
             Spacer(GlanceModifier.defaultWeight())
@@ -184,6 +191,15 @@ class UsageWidget : GlanceAppWidget() {
                 Spacer(GlanceModifier.width((Space.SM * scale).dp))
                 Chip(plan, scale)
             }
+            Spacer(GlanceModifier.width((Space.SM * scale).dp))
+            Image(
+                provider = ImageProvider(R.drawable.ic_refresh),
+                contentDescription = "Refresh",
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
+                modifier = GlanceModifier
+                    .size((Type.TITLE_MEDIUM * scale).dp)
+                    .clickable(actionRunCallback<RefreshAction>()),
+            )
         }
     }
 
@@ -213,8 +229,9 @@ class UsageWidget : GlanceAppWidget() {
         scale: Float,
         detailed: Boolean,
         showResets: Boolean,
+        pred: History.Prediction?,
     ) {
-        val pct = w?.pct ?: 0
+        val pct = w?.pctInt ?: 0
         Column(modifier = GlanceModifier.fillMaxWidth()) {
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
@@ -248,9 +265,11 @@ class UsageWidget : GlanceAppWidget() {
             )
             if (showResets) {
                 Spacer(GlanceModifier.height((Space.XS * scale).dp))
+                val out = pred?.takeIf { it.atRisk }
+                    ?.let { " · out ~${Fmt.clock(it.runOutAt!!, withDay)}" } ?: ""
                 Text(
-                    if (detailed) "resets ${Fmt.reset(w?.resetsAt, withDay)} · in ${Fmt.until(w?.resetsAt)}"
-                    else "resets in ${Fmt.until(w?.resetsAt)}",
+                    (if (detailed) "resets ${Fmt.reset(w?.resetsAt, withDay)} · in ${Fmt.until(w?.resetsAt)}"
+                    else "resets in ${Fmt.until(w?.resetsAt)}") + out,
                     maxLines = 1,
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,
@@ -288,18 +307,18 @@ class UsageWidget : GlanceAppWidget() {
                         )
                         Spacer(GlanceModifier.defaultWeight())
                         LinearProgressIndicator(
-                            progress = s.window.pct / 100f,
+                            progress = s.window.pctInt / 100f,
                             modifier = GlanceModifier
                                 .width((72f * scale).dp)
                                 .height((Space.XS * scale).dp),
-                            color = severity(s.window.pct),
+                            color = severity(s.window.pctInt),
                             backgroundColor = GlanceTheme.colors.surfaceVariant,
                         )
                         Spacer(GlanceModifier.width((Space.SM * scale).dp))
                         Text(
-                            "${s.window.pct}%",
+                            "${s.window.pctInt}%",
                             style = TextStyle(
-                                color = severity(s.window.pct),
+                                color = severity(s.window.pctInt),
                                 fontSize = (Type.LABEL_LARGE * scale).sp,
                                 fontWeight = FontWeight.Medium,
                             ),
@@ -329,9 +348,9 @@ class UsageWidget : GlanceAppWidget() {
         ) {
             Logo(scale)
             Spacer(GlanceModifier.width((Space.SM * scale).dp))
-            Pct("S", d.session?.pct ?: 0, scale)
+            Pct("S", d.session?.pctInt ?: 0, scale)
             Spacer(GlanceModifier.width((Space.MD * scale).dp))
-            Pct("W", d.weekly?.pct ?: 0, scale)
+            Pct("W", d.weekly?.pctInt ?: 0, scale)
         }
     }
 

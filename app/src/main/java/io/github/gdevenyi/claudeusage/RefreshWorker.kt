@@ -22,6 +22,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
     override suspend fun doWork(): Result {
         try {
             Usage.fetchAndCache(applicationContext)
+            Usage.cached(applicationContext)?.let { History.append(applicationContext, it) }
         } catch (e: Exception) {
             // keep showing cached data; surfaces render staleness/auth state themselves
             Log.w("ClaudeUsage", "refresh failed", e)

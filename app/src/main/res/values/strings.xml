@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Claude Usage</string>
-    <string name="widget_description">Claude session and weekly usage. Tap to refresh.</string>
+    <string name="widget_description">Claude session and weekly usage. Tap to open.</string>
 </resources>

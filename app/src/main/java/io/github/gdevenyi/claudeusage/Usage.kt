@@ -5,6 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
+import kotlin.math.roundToInt
 
 /** Fetches and caches https://api.anthropic.com/api/oauth/usage. */
 object Usage {
@@ -15,7 +16,11 @@ object Usage {
 
     private class Unauthorized : Exception()
 
-    data class Window(val pct: Int, val resetsAt: Instant?)
+    // Fractional percent straight from the API: displays round, but the
+    // trend fit needs the resolution (integer steps quantize early slopes).
+    data class Window(val pct: Double, val resetsAt: Instant?) {
+        val pctInt: Int get() = pct.roundToInt()
+    }
     data class Scoped(val name: String, val window: Window)
     data class Data(
         val session: Window?,
@@ -87,7 +92,7 @@ object Usage {
             o ?: return null
             val resets = o.optString("resets_at").takeIf { it.isNotEmpty() }
                 ?.let { runCatching { Instant.parse(it) }.getOrNull() }
-            return Window(o.optDouble(pctKey, 0.0).toInt(), resets)
+            return Window(o.optDouble(pctKey, 0.0), resets)
         }
 
         var session = window(j.optJSONObject("five_hour"), "utilization")

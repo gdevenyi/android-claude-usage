@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.view.View
 import android.widget.RemoteViews
 import java.time.Instant
@@ -23,6 +24,8 @@ object Fmt {
         val local = at.atZone(ZoneId.systemDefault())
         return local.format(if (withDay) dayTime else time)
     }
+
+    fun clock(ms: Long, withDay: Boolean): String = reset(Instant.ofEpochMilli(ms), withDay)
 
     /** Time left until a window resets, e.g. "3h 43m" or "6d 15h". */
     fun until(at: Instant?): String {
@@ -70,12 +73,19 @@ object Notif {
             NotificationChannel(CHANNEL, "Usage", NotificationManager.IMPORTANCE_LOW)
         )
 
-        val tap = PendingIntent.getBroadcast(
+        // Tapping opens the app (where the charts live); the action button
+        // below keeps an in-place refresh available.
+        val open = PendingIntent.getActivity(
+            ctx, 0, Intent(ctx, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val refresh = PendingIntent.getBroadcast(
             ctx, 0, Intent(ctx, RefreshReceiver::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val d = Usage.cached(ctx)
+        val preds = if (d != null && !store.authBroken) History.predictions(ctx) else emptyMap()
         val title: String
         val text: String
         if (store.authBroken) {
@@ -85,26 +95,41 @@ object Notif {
             title = "Claude usage"
             text = "Waiting for first refresh…"
         } else {
-            title = "Session ${d.session?.pct ?: 0}%  ·  Weekly ${d.weekly?.pct ?: 0}%" +
+            title = "Session ${d.session?.pctInt ?: 0}%  ·  Weekly ${d.weekly?.pctInt ?: 0}%" +
                 store.plan.let { if (it.isEmpty()) "" else "  ·  $it" }
-            text = "Session resets in ${Fmt.until(d.session?.resetsAt)}" +
-                (if (Fmt.stale(d.fetchedAt)) "  (updated ${Fmt.age(d.fetchedAt)})" else "")
+            // The soonest at-risk window leads; silence means on pace.
+            val risk = preds.filterValues { it.atRisk }.minByOrNull { it.value.runOutAt!! }
+            text = if (risk != null) {
+                val (name, p) = risk
+                val label = if (name == "session" || name == "weekly") name else "$name (7d)"
+                val withDay = p.runOutAt!! - System.currentTimeMillis() > 24 * 3600_000
+                "At this pace, $label runs out ~${Fmt.clock(p.runOutAt, withDay)} " +
+                    "(resets ${Fmt.clock(p.resetsAt, withDay)})"
+            } else {
+                "Session resets in ${Fmt.until(d.session?.resetsAt)}" +
+                    (if (Fmt.stale(d.fetchedAt)) "  (updated ${Fmt.age(d.fetchedAt)})" else "")
+            }
         }
 
         val builder = Notification.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat)
             .setContentTitle(title)
             .setContentText(text)
-            .setContentIntent(tap)
+            .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .addAction(
+                Notification.Action.Builder(
+                    Icon.createWithResource(ctx, R.drawable.ic_refresh), "Refresh", refresh,
+                ).build()
+            )
 
         if (d != null && !store.authBroken) {
             // Real progress bars need custom views; the decorated style keeps
             // the system's own icon/name/time header around them.
             builder.setStyle(Notification.DecoratedCustomViewStyle())
                 .setCustomContentView(collapsedView(ctx, d, title, text))
-                .setCustomBigContentView(expandedView(ctx, d))
+                .setCustomBigContentView(expandedView(ctx, d, preds))
         }
         val n = builder.build()
         nm.notify(ID, n)
@@ -122,7 +147,7 @@ object Notif {
         title: String,
         text: String,
     ): RemoteViews {
-        val pct = d.session?.pct ?: 0
+        val pct = d.session?.pctInt ?: 0
         return RemoteViews(ctx.packageName, R.layout.notif_collapsed).apply {
             setTextViewText(R.id.headline, title)
             setTextViewText(R.id.subline, text)
@@ -131,25 +156,38 @@ object Notif {
         }
     }
 
-    private fun expandedView(ctx: Context, d: Usage.Data): RemoteViews {
+    private fun expandedView(
+        ctx: Context,
+        d: Usage.Data,
+        preds: Map<String, History.Prediction>,
+    ): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.notif_expanded)
 
-        fun block(pctId: Int, barId: Int, resetId: Int, w: Usage.Window?, withDay: Boolean) {
-            val pct = w?.pct ?: 0
+        fun block(
+            pctId: Int,
+            barId: Int,
+            resetId: Int,
+            w: Usage.Window?,
+            withDay: Boolean,
+            pred: History.Prediction?,
+        ) {
+            val pct = w?.pctInt ?: 0
             v.setTextViewText(pctId, "$pct%")
             // Resolve at apply time (like the bar tints) so a light/dark
             // switch re-inflates with the right palette, not a baked-in one.
             v.setColor(pctId, "setTextColor", severityColor(pct))
             v.setProgressBar(barId, 100, pct, false)
             v.setColorStateList(barId, "setProgressTintList", severityColor(pct))
+            val out = pred?.takeIf { it.atRisk }
+                ?.let { " · out ~${Fmt.clock(it.runOutAt!!, withDay)}" } ?: ""
             v.setTextViewText(
                 resetId,
-                "resets ${Fmt.reset(w?.resetsAt, withDay)} · in ${Fmt.until(w?.resetsAt)}",
+                "resets ${Fmt.reset(w?.resetsAt, withDay)} · in ${Fmt.until(w?.resetsAt)}$out",
             )
         }
 
-        block(R.id.sessionPct, R.id.sessionBar, R.id.sessionReset, d.session, false)
-        block(R.id.weeklyPct, R.id.weeklyBar, R.id.weeklyReset, d.weekly, true)
+        block(R.id.sessionPct, R.id.sessionBar, R.id.sessionReset, d.session, false, preds["session"])
+        block(R.id.weeklyPct, R.id.weeklyBar, R.id.weeklyReset, d.weekly, true, preds["weekly"])
 
         val model = d.scoped.firstOrNull()
         if (model == null) {
@@ -157,16 +195,16 @@ object Notif {
         } else {
             v.setViewVisibility(R.id.modelRow, View.VISIBLE)
             v.setTextViewText(R.id.modelName, "${model.name} (7d)")
-            v.setTextViewText(R.id.modelPct, "${model.window.pct}%")
-            v.setColor(R.id.modelPct, "setTextColor", severityColor(model.window.pct))
-            v.setProgressBar(R.id.modelBar, 100, model.window.pct, false)
-            v.setColorStateList(R.id.modelBar, "setProgressTintList", severityColor(model.window.pct))
+            v.setTextViewText(R.id.modelPct, "${model.window.pctInt}%")
+            v.setColor(R.id.modelPct, "setTextColor", severityColor(model.window.pctInt))
+            v.setProgressBar(R.id.modelBar, 100, model.window.pctInt, false)
+            v.setColorStateList(R.id.modelBar, "setProgressTintList", severityColor(model.window.pctInt))
         }
 
         v.setTextViewText(
             R.id.updated,
-            if (Fmt.stale(d.fetchedAt)) "Stale — updated ${Fmt.age(d.fetchedAt)} · tap to refresh"
-            else "Updated ${Fmt.age(d.fetchedAt)} · tap to refresh",
+            if (Fmt.stale(d.fetchedAt)) "Stale — updated ${Fmt.age(d.fetchedAt)} · tap to open"
+            else "Updated ${Fmt.age(d.fetchedAt)} · tap to open",
         )
         return v
     }
