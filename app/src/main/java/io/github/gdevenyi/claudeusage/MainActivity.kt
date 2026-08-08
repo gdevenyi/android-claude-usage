@@ -207,20 +207,27 @@ class MainActivity : AppCompatActivity() {
         val label = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurfaceVariant)
 
         val weeklyMarks = hist["weekly"].orEmpty().map { it.r }.distinct()
+        val modelKey = hist.keys.firstOrNull { it.contains("fable", ignoreCase = true) }
+            ?: (hist.keys - setOf("session", "weekly")).firstOrNull()
 
         findViewById<HistoryChartView>(R.id.sessionChart).show(
             listOf(HistoryChartView.Series(hist["session"].orEmpty(), preds["session"], primary)),
             History.SESSION_MS, now, "5 h ago", emptyList(), grid, label,
         )
 
+        // The model rides the weekly figure too: it has a weekly limit of
+        // its own, and either can be the one that runs out first.
+        val weeklySeries = mutableListOf(
+            HistoryChartView.Series(hist["weekly"].orEmpty(), preds["weekly"], primary)
+        )
+        modelKey?.let { weeklySeries += HistoryChartView.Series(hist[it].orEmpty(), preds[it], tertiary) }
+        findViewById<TextView>(R.id.weeklyTitle).text =
+            if (modelKey != null) "Weekly & $modelKey — last 7 days" else "Weekly — last 7 days"
         findViewById<HistoryChartView>(R.id.weeklyChart).show(
-            listOf(HistoryChartView.Series(hist["weekly"].orEmpty(), preds["weekly"], primary)),
-            History.WEEKLY_MS, now, "7 d ago", weeklyMarks, grid, label,
+            weeklySeries, History.WEEKLY_MS, now, "7 d ago", weeklyMarks, grid, label,
         )
 
         // The 3-week figure is history only: total plus per-model, no trend.
-        val modelKey = hist.keys.firstOrNull { it.contains("fable", ignoreCase = true) }
-            ?: (hist.keys - setOf("session", "weekly")).firstOrNull()
         val historySeries = mutableListOf(
             HistoryChartView.Series(hist["weekly"].orEmpty(), null, primary)
         )
