@@ -28,6 +28,7 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
     private var xMax = 0L
     private var now = 0L
     private var startLabel = ""
+    private var endLabel = ""
 
     private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -54,23 +55,24 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
     private var labelColor = 0
     private var critColor = 0
 
+    /** The x-axis is an explicit range — a quota window or a trailing span. */
     fun show(
         series: List<Series>,
-        rangeMs: Long,
+        xMin: Long,
+        xMax: Long,
         now: Long,
         startLabel: String,
+        endLabel: String,
         resetMarks: List<Long>,
         gridColor: Int,
         labelColor: Int,
     ) {
         this.series = series
         this.now = now
-        this.xMin = now - rangeMs
-        // The dashed extensions run into the future: stretch the axis to the
-        // furthest one so predictions are never drawn off-canvas.
-        this.xMax = series.mapNotNull { s -> s.pred?.let { minOf(it.runOutAt ?: it.resetsAt, it.resetsAt) } }
-            .plus(now).max()
+        this.xMin = xMin
+        this.xMax = xMax
         this.startLabel = startLabel
+        this.endLabel = endLabel
         this.resetMarks = resetMarks
         this.gridColor = gridColor
         this.labelColor = labelColor
@@ -88,7 +90,7 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
         if (w <= 0 || h <= 0 || xMax <= xMin) return
 
         text.color = labelColor
-        if (series.all { it.points.none { p -> p.t >= xMin } }) {
+        if (series.all { it.points.none { p -> p.t in xMin..xMax } }) {
             canvas.drawText("No data yet", (w - text.measureText("No data yet")) / 2, h / 2, text)
             return
         }
@@ -102,7 +104,7 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
         for (m in resetMarks) if (m in xMin..xMax) {
             canvas.drawLine(x(m, w), 0f, x(m, w), h, thin)
         }
-        canvas.drawLine(x(now, w), 0f, x(now, w), h, thin)
+        if (now in xMin..xMax) canvas.drawLine(x(now, w), 0f, x(now, w), h, thin)
 
         for (s in series) {
             // History: one path per cycle, so resets break the line. Each
@@ -113,7 +115,7 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
             var path: Path? = null
             var prevR = 0L
             for (p in s.points) {
-                if (p.t < xMin) continue
+                if (p.t < xMin || p.t > xMax) continue
                 if (path == null || p.r != prevR) {
                     path?.let { canvas.drawPath(it, line) }
                     path = Path().apply { moveTo(x(p.t, w), y(p.p, h)) }
@@ -144,11 +146,9 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
         // Y labels ride the top gridline; x labels sit in the bottom band.
         canvas.drawText("100%", 2f, y(100.0, h) + text.textSize, text)
         canvas.drawText(startLabel, 0f, height.toFloat() - text.textSize * 0.3f, text)
-        // Clamped: with no future extension "now" sits on the right edge.
-        val nowW = text.measureText("now")
         canvas.drawText(
-            "now",
-            (x(now, w) - nowW / 2).coerceIn(0f, w - nowW),
+            endLabel,
+            w - text.measureText(endLabel),
             height.toFloat() - text.textSize * 0.3f, text,
         )
     }

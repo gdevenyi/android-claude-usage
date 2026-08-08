@@ -9,9 +9,10 @@ An Android port of the ideas in
   It scales with the size you give it, from a 2×1 chip to a full panel.
 - **Ongoing notification** — the same numbers in the shade; expand for the
   full breakdown.
-- **History and forecast** — the app charts session (last 5 hours) and
-  weekly (last 7 days) usage with the current window's trend extended as a
-  dashed line, plus a 3-week history of total and per-model quota. When a
+- **History and forecast** — the app charts the current session (5 h) and
+  weekly (7 d) quota windows from start to reset, with the trend extended as
+  a dashed line racing the reset, plus a 3-week history of total and
+  per-model quota. When a
   trend reaches 100% before the window resets, the widget and notification
   add a warning ("out ~13:10"). History lives only on the device and is
   deleted on logout.

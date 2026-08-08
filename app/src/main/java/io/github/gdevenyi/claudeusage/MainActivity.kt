@@ -210,9 +210,19 @@ class MainActivity : AppCompatActivity() {
         val modelKey = hist.keys.firstOrNull { it.contains("fable", ignoreCase = true) }
             ?: (hist.keys - setOf("session", "weekly")).firstOrNull()
 
+        // The window figures span the full current quota window (start to
+        // reset), so the dashed trend visibly races the right edge. Between
+        // sessions the newest cycle's window is shown as-is.
+        fun window(key: String, ms: Long, withDay: Boolean): Triple<Long, Long, String> {
+            val r = hist[key]?.lastOrNull()?.r
+            return if (r != null) Triple(r - ms, r, "resets ${Fmt.clock(r, withDay)}")
+            else Triple(now - ms, now, "now")
+        }
+
+        val (sMin, sMax, sEnd) = window("session", History.SESSION_MS, false)
         findViewById<HistoryChartView>(R.id.sessionChart).show(
             listOf(HistoryChartView.Series(hist["session"].orEmpty(), preds["session"], primary)),
-            History.SESSION_MS, now, "5 h ago", emptyList(), grid, label,
+            sMin, sMax, now, Fmt.clock(sMin, false), sEnd, emptyList(), grid, label,
         )
 
         // The model rides the weekly figure too: it has a weekly limit of
@@ -222,9 +232,11 @@ class MainActivity : AppCompatActivity() {
         )
         modelKey?.let { weeklySeries += HistoryChartView.Series(hist[it].orEmpty(), preds[it], tertiary) }
         findViewById<TextView>(R.id.weeklyTitle).text =
-            if (modelKey != null) "Weekly & $modelKey — last 7 days" else "Weekly — last 7 days"
+            if (modelKey != null) "Weekly & $modelKey — current 7 d window"
+            else "Weekly — current 7 d window"
+        val (wMin, wMax, wEnd) = window("weekly", History.WEEKLY_MS, true)
         findViewById<HistoryChartView>(R.id.weeklyChart).show(
-            weeklySeries, History.WEEKLY_MS, now, "7 d ago", weeklyMarks, grid, label,
+            weeklySeries, wMin, wMax, now, Fmt.clock(wMin, true), wEnd, weeklyMarks, grid, label,
         )
 
         // The 3-week figure is history only: total plus per-model, no trend.
@@ -236,7 +248,7 @@ class MainActivity : AppCompatActivity() {
             if (modelKey != null) "History, weekly & $modelKey — last 3 weeks"
             else "History, weekly — last 3 weeks"
         findViewById<HistoryChartView>(R.id.historyChart).show(
-            historySeries, History.KEEP_MS, now, "21 d ago", weeklyMarks, grid, label,
+            historySeries, now - History.KEEP_MS, now, now, "21 d ago", "now", weeklyMarks, grid, label,
         )
     }
 }

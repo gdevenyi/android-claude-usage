@@ -123,7 +123,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:text="Session — last 5 hours" />
+            android:text="Session — current 5 h window" />
 
         <io.github.gdevenyi.claudeusage.HistoryChartView
             android:id="@+id/sessionChart"
@@ -137,7 +137,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:text="Weekly — last 7 days" />
+            android:text="Weekly — current 7 d window" />
 
         <io.github.gdevenyi.claudeusage.HistoryChartView
             android:id="@+id/weeklyChart"

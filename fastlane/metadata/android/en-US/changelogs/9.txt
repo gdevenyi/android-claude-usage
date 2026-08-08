@@ -1,0 +1,4 @@
+The session and weekly figures now span the full current quota window,
+from its start to its reset, instead of a trailing time range — the
+dashed trend line visibly races the reset at the right edge. A hairline
+marks "now" inside the window.
