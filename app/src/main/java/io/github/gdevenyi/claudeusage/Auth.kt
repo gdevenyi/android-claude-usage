@@ -60,7 +60,13 @@ object Auth {
         saveTokens(ctx, post(body))
     }
 
-    /** Refresh the access token. Marks auth broken on invalid_grant. */
+    /**
+     * Refresh the access token. Marks auth broken on invalid_grant.
+     * Synchronized: the periodic and on-demand workers can overlap, and the
+     * refresh token is single-use — an unserialized double refresh makes the
+     * loser look logged-out while valid tokens sit in the store.
+     */
+    @Synchronized
     fun refresh(ctx: Context) {
         val store = Store(ctx)
         val rt = store.refreshToken ?: throw AuthFailed("not logged in")
@@ -73,13 +79,16 @@ object Auth {
                 )
             )
         } catch (e: AuthFailed) {
-            store.authBroken = true
+            // Only a dead grant forces re-login. Other 4xx (a sustained 429,
+            // a proxy error page) must not lock the user out permanently.
+            if (e.message?.contains("invalid_grant") == true) store.authBroken = true
             throw e
         }
         saveTokens(ctx, json)
     }
 
     /** Returns a valid access token, refreshing if it expires within 5 minutes. */
+    @Synchronized
     fun freshAccessToken(ctx: Context): String {
         val store = Store(ctx)
         if (!store.loggedIn || store.authBroken) throw AuthFailed("login required")
@@ -96,8 +105,15 @@ object Auth {
         )
     }
 
+    /** The request never reached a server, so replaying the grant is safe. */
+    private class NotSent(cause: Exception) : Exception(cause)
+
     // Endpoint quirks are community-documented, not official: try both domains
     // and both encodings (form first; some reports say JSON, some say form).
+    // Grants are single-use, so only failures from before the request could
+    // reach a server (DNS, connect, TLS) move on to the next combination —
+    // a lost response may mean the server already rotated the token, and
+    // replaying it elsewhere would turn that into a spurious invalid_grant.
     private fun post(body: Map<String, String>): JSONObject {
         var last: Exception? = null
         for (url in TOKEN_URLS) {
@@ -105,10 +121,10 @@ object Auth {
                 try {
                     return postOnce(url, body, asJson)
                 } catch (e: AuthFailed) {
-                    last = e
-                } catch (e: Exception) {
-                    last = e
-                    break // network/server error: switching encoding won't help
+                    last = e // 4xx from this server: try the other encoding
+                } catch (e: NotSent) {
+                    last = e.cause as? Exception ?: e
+                    break // host unreachable: switching encoding won't help
                 }
             }
         }
@@ -130,6 +146,11 @@ object Auth {
                 .toByteArray()
         }
         try {
+            try {
+                conn.connect()
+            } catch (e: Exception) {
+                throw NotSent(e)
+            }
             conn.outputStream.use { it.write(bytes) }
             val code = conn.responseCode
             val text = (if (code in 200..299) conn.inputStream else conn.errorStream)

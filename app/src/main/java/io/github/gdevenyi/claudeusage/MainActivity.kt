@@ -2,11 +2,13 @@ package io.github.gdevenyi.claudeusage
 
 import android.Manifest
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.CompoundButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +24,37 @@ class MainActivity : AppCompatActivity() {
 
     private val intervals = listOf(15, 30, 60)
 
+    // State changes from off-screen writers (the refresh worker, a code
+    // exchange finishing after a rotation destroyed its activity) repaint
+    // whichever instance is currently visible. Field: prefs hold listeners
+    // weakly, so an inline lambda would be collected.
+    private val onPrefChange =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> updateUi() }
+
+    // Field, not inline: updateUi() detaches it while it syncs the switch, so
+    // only a real user toggle — never a programmatic setChecked — asks for
+    // the notification permission.
+    private val onNotifToggle = CompoundButton.OnCheckedChangeListener { _, checked ->
+        Store(this).notifEnabled = checked
+        if (checked && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
+        Notif.update(this)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Store(this).prefs.registerOnSharedPreferenceChangeListener(onPrefChange)
+        updateUi()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        Store(this).prefs.unregisterOnSharedPreferenceChangeListener(onPrefChange)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
@@ -29,7 +62,11 @@ class MainActivity : AppCompatActivity() {
         // Edge-to-edge is mandatory since Android 15: inset the content ourselves.
         val root = findViewById<View>(R.id.root)
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // ime() too, or the keyboard covers the code field with no way
+            // to scroll to it (edge-to-edge stops the system resizing us).
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime()
+            )
             v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
@@ -85,14 +122,16 @@ class MainActivity : AppCompatActivity() {
             updateUi()
         }
 
-        findViewById<MaterialSwitch>(R.id.notifSwitch).setOnCheckedChangeListener { _, checked ->
-            store.notifEnabled = checked
-            if (checked && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
-            }
-            Notif.update(this)
+        findViewById<MaterialSwitch>(R.id.notifSwitch).setOnCheckedChangeListener(onNotifToggle)
+        // One automatic ask, on first launch only. Android 13 stops showing
+        // the dialog after two denials, so repeated surprise prompts on every
+        // start would burn that quota with the switch still reading "on".
+        if (store.notifEnabled && !store.notifAsked &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            store.notifAsked = true
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
 
         val interval = findViewById<MaterialAutoCompleteTextView>(R.id.intervalInput)
@@ -110,13 +149,17 @@ class MainActivity : AppCompatActivity() {
         RefreshWorker.refreshNow(this)
     }
 
-    override fun onResume() {
-        super.onResume()
-        updateUi()
-    }
-
     override fun onRequestPermissionsResult(code: Int, perms: Array<out String>, results: IntArray) {
         super.onRequestPermissionsResult(code, perms, results)
+        if (results.firstOrNull() != PackageManager.PERMISSION_GRANTED &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
+        ) {
+            // Quota exhausted: the dialog will never show again on its own.
+            Toast.makeText(
+                this, "Notifications are blocked — allow them in system settings",
+                Toast.LENGTH_LONG,
+            ).show()
+        }
         Notif.update(this)
     }
 
@@ -141,6 +184,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.codeHint).visibility = pasteVis
         findViewById<TextInputLayout>(R.id.codeField).visibility = pasteVis
         findViewById<MaterialButton>(R.id.submitBtn).visibility = pasteVis
-        findViewById<MaterialSwitch>(R.id.notifSwitch).isChecked = store.notifEnabled
+        val sw = findViewById<MaterialSwitch>(R.id.notifSwitch)
+        sw.setOnCheckedChangeListener(null)
+        sw.isChecked = store.notifEnabled
+        sw.setOnCheckedChangeListener(onNotifToggle)
     }
 }

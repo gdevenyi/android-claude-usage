@@ -1,10 +1,12 @@
 package io.github.gdevenyi.claudeusage
 
 import android.content.Context
+import android.content.SharedPreferences
 
 /** All app state: tokens, cached usage, settings. Plain app-private prefs. */
 class Store(ctx: Context) {
-    private val p = ctx.getSharedPreferences("claude_usage", Context.MODE_PRIVATE)
+    val prefs: SharedPreferences = ctx.getSharedPreferences("claude_usage", Context.MODE_PRIVATE)
+    private val p get() = prefs
 
     var accessToken: String?
         get() = p.getString("accessToken", null)
@@ -60,6 +62,10 @@ class Store(ctx: Context) {
     var notifEnabled: Boolean
         get() = p.getBoolean("notifEnabled", true)
         set(v) = p.edit().putBoolean("notifEnabled", v).apply()
+    /** The one automatic POST_NOTIFICATIONS ask has been spent. */
+    var notifAsked: Boolean
+        get() = p.getBoolean("notifAsked", false)
+        set(v) = p.edit().putBoolean("notifAsked", v).apply()
     var intervalMin: Int
         get() = p.getInt("intervalMin", 15)
         set(v) = p.edit().putInt("intervalMin", v).apply()

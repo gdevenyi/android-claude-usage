@@ -1,0 +1,15 @@
+Correctness and robustness fixes from a full code review:
+
+- Overlapping background refreshes no longer race the single-use refresh
+  token, which could force a spurious re-login.
+- A transient token-endpoint error (rate limit, proxy page) no longer marks
+  the login permanently broken; only a real invalid_grant does.
+- A network failure mid-exchange no longer replays a single-use code or
+  refresh token against the second endpoint.
+- OAuth tokens are excluded from Android backup and device transfer.
+- The notification permission is asked once, and only re-asked by a real
+  toggle, instead of on every app start.
+- The keyboard no longer covers the authorization-code field.
+- The settings screen updates itself when a background refresh or a login
+  finishes, including after a rotation.
+- Notification percent colors now follow light/dark switches immediately.

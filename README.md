@@ -100,6 +100,12 @@ the tokens stay in the app's private storage.
 This uses an OAuth flow that Anthropic has not documented for third parties.
 It works today; it could stop working if Anthropic changes it.
 
+One quirk inherited from that flow: the PKCE verifier travels in the `state`
+parameter of the authorization URL, so it ends up in your browser history.
+That only matters for a login you start and abandon — anything able to read
+your browser history could finish it while the code is still valid. Completing
+(or simply redoing) the login makes the code useless.
+
 ## Settings
 
 Log in / log out, turn the ongoing notification on or off, and choose the

@@ -137,7 +137,9 @@ object Notif {
         fun block(pctId: Int, barId: Int, resetId: Int, w: Usage.Window?, withDay: Boolean) {
             val pct = w?.pct ?: 0
             v.setTextViewText(pctId, "$pct%")
-            v.setTextColor(pctId, ctx.getColor(severityColor(pct)))
+            // Resolve at apply time (like the bar tints) so a light/dark
+            // switch re-inflates with the right palette, not a baked-in one.
+            v.setColor(pctId, "setTextColor", severityColor(pct))
             v.setProgressBar(barId, 100, pct, false)
             v.setColorStateList(barId, "setProgressTintList", severityColor(pct))
             v.setTextViewText(
@@ -156,7 +158,7 @@ object Notif {
             v.setViewVisibility(R.id.modelRow, View.VISIBLE)
             v.setTextViewText(R.id.modelName, "${model.name} (7d)")
             v.setTextViewText(R.id.modelPct, "${model.window.pct}%")
-            v.setTextColor(R.id.modelPct, ctx.getColor(severityColor(model.window.pct)))
+            v.setColor(R.id.modelPct, "setTextColor", severityColor(model.window.pct))
             v.setProgressBar(R.id.modelBar, 100, model.window.pct, false)
             v.setColorStateList(R.id.modelBar, "setProgressTintList", severityColor(model.window.pct))
         }
