@@ -1,0 +1,3 @@
+Fix: an idle window (0%, no active session) has no reset time — the
+widget and notification showed a dangling "resets — · in" caption. They
+now show a plain dash, and the notification says "No active session".

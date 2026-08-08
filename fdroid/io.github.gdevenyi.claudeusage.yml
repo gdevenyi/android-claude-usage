@@ -66,7 +66,14 @@ Builds:
     gradle:
       - yes
 
+  - versionName: 0.3.5
+    versionCode: 8
+    commit: v0.3.5
+    subdir: app
+    gradle:
+      - yes
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.3.4
-CurrentVersionCode: 7
+CurrentVersion: 0.3.5
+CurrentVersionCode: 8

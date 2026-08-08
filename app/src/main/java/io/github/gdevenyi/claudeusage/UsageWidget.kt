@@ -268,8 +268,7 @@ class UsageWidget : GlanceAppWidget() {
                 val out = pred?.takeIf { it.atRisk }
                     ?.let { " · out ~${Fmt.clock(it.runOutAt!!, withDay)}" } ?: ""
                 Text(
-                    (if (detailed) "resets ${Fmt.reset(w?.resetsAt, withDay)} · in ${Fmt.until(w?.resetsAt)}"
-                    else "resets in ${Fmt.until(w?.resetsAt)}") + out,
+                    Fmt.resetLine(w?.resetsAt, withDay, detailed, out),
                     maxLines = 1,
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,

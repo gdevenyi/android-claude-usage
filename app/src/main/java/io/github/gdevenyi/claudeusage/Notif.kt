@@ -27,6 +27,17 @@ object Fmt {
 
     fun clock(ms: Long, withDay: Boolean): String = reset(Instant.ofEpochMilli(ms), withDay)
 
+    /**
+     * The reset caption under a bar. An idle window (0%, nothing used yet)
+     * has no resets_at — show a plain dash, not "resets — · in ".
+     */
+    fun resetLine(at: Instant?, withDay: Boolean, detailed: Boolean, out: String = ""): String =
+        when {
+            at == null -> "—"
+            detailed -> "resets ${reset(at, withDay)} · in ${until(at)}$out"
+            else -> "resets in ${until(at)}$out"
+        }
+
     /** Time left until a window resets, e.g. "3h 43m" or "6d 15h". */
     fun until(at: Instant?): String {
         at ?: return ""
@@ -106,7 +117,8 @@ object Notif {
                 "At this pace, $label runs out ~${Fmt.clock(p.runOutAt, withDay)} " +
                     "(resets ${Fmt.clock(p.resetsAt, withDay)})"
             } else {
-                "Session resets in ${Fmt.until(d.session?.resetsAt)}" +
+                (d.session?.resetsAt?.let { "Session resets in ${Fmt.until(it)}" }
+                    ?: "No active session") +
                     (if (Fmt.stale(d.fetchedAt)) "  (updated ${Fmt.age(d.fetchedAt)})" else "")
             }
         }
@@ -180,10 +192,7 @@ object Notif {
             v.setColorStateList(barId, "setProgressTintList", severityColor(pct))
             val out = pred?.takeIf { it.atRisk }
                 ?.let { " · out ~${Fmt.clock(it.runOutAt!!, withDay)}" } ?: ""
-            v.setTextViewText(
-                resetId,
-                "resets ${Fmt.reset(w?.resetsAt, withDay)} · in ${Fmt.until(w?.resetsAt)}$out",
-            )
+            v.setTextViewText(resetId, Fmt.resetLine(w?.resetsAt, withDay, detailed = true, out))
         }
 
         block(R.id.sessionPct, R.id.sessionBar, R.id.sessionReset, d.session, false, preds["session"])
