@@ -1,0 +1,3 @@
+The charts are now three figures: session (last 5 hours) and weekly (last
+7 days), each with its dashed trend prediction, plus a 3-week history of
+total and per-model quota.
