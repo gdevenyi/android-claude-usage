@@ -1,0 +1,2 @@
+The weekly figure now shows the per-model series with its own trend
+prediction alongside the total, since the model has a weekly limit too.
