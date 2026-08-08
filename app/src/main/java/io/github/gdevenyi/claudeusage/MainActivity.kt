@@ -206,22 +206,30 @@ class MainActivity : AppCompatActivity() {
         )
         val label = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurfaceVariant)
 
+        val weeklyMarks = hist["weekly"].orEmpty().map { it.r }.distinct()
+
         findViewById<HistoryChartView>(R.id.sessionChart).show(
             listOf(HistoryChartView.Series(hist["session"].orEmpty(), preds["session"], primary)),
-            24 * 3600_000L, now, "24 h ago", emptyList(), grid, label,
+            History.SESSION_MS, now, "5 h ago", emptyList(), grid, label,
         )
 
+        findViewById<HistoryChartView>(R.id.weeklyChart).show(
+            listOf(HistoryChartView.Series(hist["weekly"].orEmpty(), preds["weekly"], primary)),
+            History.WEEKLY_MS, now, "7 d ago", weeklyMarks, grid, label,
+        )
+
+        // The 3-week figure is history only: total plus per-model, no trend.
         val modelKey = hist.keys.firstOrNull { it.contains("fable", ignoreCase = true) }
             ?: (hist.keys - setOf("session", "weekly")).firstOrNull()
-        val weekly = mutableListOf(
-            HistoryChartView.Series(hist["weekly"].orEmpty(), preds["weekly"], primary)
+        val historySeries = mutableListOf(
+            HistoryChartView.Series(hist["weekly"].orEmpty(), null, primary)
         )
-        modelKey?.let { weekly += HistoryChartView.Series(hist[it].orEmpty(), preds[it], tertiary) }
-        findViewById<TextView>(R.id.weeklyTitle).text =
-            if (modelKey != null) "Weekly & $modelKey — last 3 weeks" else "Weekly — last 3 weeks"
-        findViewById<HistoryChartView>(R.id.weeklyChart).show(
-            weekly, History.KEEP_MS, now, "21 d ago",
-            hist["weekly"].orEmpty().map { it.r }.distinct(), grid, label,
+        modelKey?.let { historySeries += HistoryChartView.Series(hist[it].orEmpty(), null, tertiary) }
+        findViewById<TextView>(R.id.historyTitle).text =
+            if (modelKey != null) "History, weekly & $modelKey — last 3 weeks"
+            else "History, weekly — last 3 weeks"
+        findViewById<HistoryChartView>(R.id.historyChart).show(
+            historySeries, History.KEEP_MS, now, "21 d ago", weeklyMarks, grid, label,
         )
     }
 }

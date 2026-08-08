@@ -123,7 +123,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:text="Session — last 24 hours" />
+            android:text="Session — last 5 hours" />
 
         <io.github.gdevenyi.claudeusage.HistoryChartView
             android:id="@+id/sessionChart"
@@ -132,15 +132,28 @@
             android:layout_marginTop="8dp" />
 
         <TextView
-            android:id="@+id/weeklyTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:textAppearance="?attr/textAppearanceBodyLarge"
-            android:text="Weekly — last 3 weeks" />
+            android:text="Weekly — last 7 days" />
 
         <io.github.gdevenyi.claudeusage.HistoryChartView
             android:id="@+id/weeklyChart"
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/historyTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:text="History — last 3 weeks" />
+
+        <io.github.gdevenyi.claudeusage.HistoryChartView
+            android:id="@+id/historyChart"
             android:layout_width="match_parent"
             android:layout_height="160dp"
             android:layout_marginTop="8dp" />
