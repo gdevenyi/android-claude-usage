@@ -20,7 +20,7 @@ class TrendTest {
         // 30%/h from t0: hits 100 at t0+3h20m, before the reset.
         val p = Trend.predict(
             pts(reset, t0 to 0.0, t0 + h to 30.0, t0 + 2 * h to 60.0),
-            History.SESSION_MS, now = t0 + 2 * h,
+            now = t0 + 2 * h,
         )
         assertNotNull(p)
         assertTrue(p!!.atRisk)
@@ -34,7 +34,7 @@ class TrendTest {
         // 5%/h: 100% is 20h away, far past the reset — line shown, no warning.
         val p = Trend.predict(
             pts(reset, t0 to 0.0, t0 + h to 5.0, t0 + 2 * h to 10.0),
-            History.SESSION_MS, now = t0 + 2 * h,
+            now = t0 + 2 * h,
         )
         assertNotNull(p)
         assertTrue(!p!!.atRisk)
@@ -46,7 +46,7 @@ class TrendTest {
         val reset = t0 + 5 * h
         val p = Trend.predict(
             pts(reset, t0 to 40.0, t0 + h to 40.0, t0 + 2 * h to 40.0),
-            History.SESSION_MS, now = t0 + 2 * h,
+            now = t0 + 2 * h,
         )
         assertNotNull(p)
         assertNull(p!!.runOutAt)
@@ -61,10 +61,29 @@ class TrendTest {
         val p = Trend.predict(
             pts(oldReset, t0 to 0.0, t0 + h to 50.0, t0 + 2 * h to 99.0) +
                 pts(newReset, t0 + 5 * h to 1.0, t0 + 6 * h to 1.0, t0 + 7 * h to 1.0),
-            History.SESSION_MS, now = t0 + 7 * h,
+            now = t0 + 7 * h,
         )
         assertNotNull(p)
         assertNull(p!!.runOutAt)
+    }
+
+    @Test
+    fun recentBurstMovesTheForecast() {
+        val reset = t0 + 5 * h
+        // Quiet for 2.5 h, then a hard burst: the whole-cycle average would
+        // say safe, but the recent slope (~37%/h) runs out before the reset.
+        val p = Trend.predict(
+            pts(
+                reset,
+                t0 to 10.0, t0 + h / 2 to 10.0, t0 + h to 10.0,
+                t0 + 3 * h / 2 to 10.0, t0 + 2 * h to 10.0, t0 + 5 * h / 2 to 10.0,
+                t0 + 3 * h to 30.0, t0 + 7 * h / 2 to 55.0, t0 + 4 * h to 80.0,
+            ),
+            now = t0 + 4 * h,
+        )
+        assertNotNull(p)
+        assertTrue(p!!.atRisk)
+        assertTrue(p.runOutAt!! < reset)
     }
 
     @Test
@@ -72,23 +91,16 @@ class TrendTest {
         val reset = t0 + 5 * h
         val rising = pts(reset, t0 to 0.0, t0 + h to 30.0, t0 + 2 * h to 60.0)
         // Too few samples.
-        assertNull(Trend.predict(rising.take(2), History.SESSION_MS, now = t0 + h))
+        assertNull(Trend.predict(rising.take(2), now = t0 + h))
         // Span under 45 min.
         assertNull(
             Trend.predict(
                 pts(reset, t0 to 0.0, t0 + 10 * 60_000 to 5.0, t0 + 20 * 60_000 to 10.0),
-                History.SESSION_MS, now = t0 + 20 * 60_000,
-            )
-        )
-        // Weekly needs 5% of the window (8.4h), not just 45 min.
-        assertNull(
-            Trend.predict(
-                pts(t0 + 7 * 24 * h, t0 to 0.0, t0 + h to 3.0, t0 + 2 * h to 6.0),
-                History.WEEKLY_MS, now = t0 + 2 * h,
+                now = t0 + 20 * 60_000,
             )
         )
         // Stale: newest sample older than an hour.
-        assertNull(Trend.predict(rising, History.SESSION_MS, now = t0 + 4 * h))
+        assertNull(Trend.predict(rising, now = t0 + 4 * h))
     }
 
     @Test

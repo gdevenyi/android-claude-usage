@@ -93,31 +93,37 @@ object History {
     /** Window name -> confident prediction, for every logged window. */
     fun predictions(ctx: Context, now: Long = System.currentTimeMillis()): Map<String, Prediction> =
         readAll(ctx).mapNotNull { (k, pts) ->
-            Trend.predict(pts, if (k == "session") SESSION_MS else WEEKLY_MS, now)
-                ?.let { k to it }
+            Trend.predict(pts, now)?.let { k to it }
         }.toMap()
 }
 
 /** Pure fit logic, kept free of Android types so a JVM test can run it. */
 object Trend {
     const val STALE_MS = 60 * 60_000L
+    // The forecast follows recent pace, not the whole-cycle average: fit the
+    // last few samples, widened backward only until the fit spans enough
+    // time to trust. A burst after a quiet stretch must move the forecast.
+    private const val FIT_POINTS = 5
+    private const val MIN_SPAN_MS = 45 * 60_000L
 
     /**
-     * Least-squares line through the newest cycle's samples. Null unless the
-     * fit can be trusted: >= 3 samples spanning >= max(45 min, 5% of the
-     * window), newest sample fresher than the stale threshold.
+     * Least-squares line through the newest cycle's most recent samples.
+     * Null unless the fit can be trusted: >= 3 samples spanning >= 45 min,
+     * newest sample fresher than the stale threshold.
      */
-    fun predict(points: List<History.Point>, windowMs: Long, now: Long): History.Prediction? {
+    fun predict(points: List<History.Point>, now: Long): History.Prediction? {
         val last = points.lastOrNull() ?: return null
         if (now - last.t > STALE_MS) return null
         val cycle = points.filter { it.r == last.r }
-        if (cycle.size < 3) return null
-        val t0 = cycle.first().t
-        if (cycle.last().t - t0 < maxOf(45 * 60_000L, windowMs / 20)) return null
+        var from = (cycle.size - FIT_POINTS).coerceAtLeast(0)
+        while (from > 0 && last.t - cycle[from].t < MIN_SPAN_MS) from--
+        val fit = cycle.subList(from, cycle.size)
+        if (fit.size < 3 || last.t - fit.first().t < MIN_SPAN_MS) return null
+        val t0 = fit.first().t
 
-        val n = cycle.size.toDouble()
+        val n = fit.size.toDouble()
         var st = 0.0; var sp = 0.0; var stt = 0.0; var stp = 0.0
-        for (c in cycle) {
+        for (c in fit) {
             val x = (c.t - t0).toDouble()
             st += x; sp += c.p; stt += x * x; stp += x * c.p
         }

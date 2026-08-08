@@ -1,0 +1,3 @@
+The run-out forecast now follows your recent pace (the slope of the last
+few samples) instead of the whole window's average, so a burst of usage
+after a quiet stretch moves the prediction the way it should.

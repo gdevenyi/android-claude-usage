@@ -12,8 +12,8 @@ android {
         applicationId = "io.github.gdevenyi.claudeusage"
         minSdk = 33
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.4.0"
+        versionCode = 10
+        versionName = "0.4.1"
     }
 
     buildTypes {
