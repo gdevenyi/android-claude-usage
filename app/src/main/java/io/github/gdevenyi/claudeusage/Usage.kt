@@ -5,6 +5,7 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
+import java.time.OffsetDateTime
 import kotlin.math.roundToInt
 
 /** Fetches and caches https://api.anthropic.com/api/oauth/usage. */
@@ -90,8 +91,13 @@ object Usage {
         }
         fun window(o: JSONObject?, pctKey: String): Window? {
             o ?: return null
+            // The API sends "+00:00" offsets, which Instant.parse only accepts
+            // on newer runtimes — fall back to an offset-tolerant parse.
             val resets = o.optString("resets_at").takeIf { it.isNotEmpty() }
-                ?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                ?.let {
+                    runCatching { Instant.parse(it) }.getOrNull()
+                        ?: runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull()
+                }
             return Window(o.optDouble(pctKey, 0.0), resets)
         }
 

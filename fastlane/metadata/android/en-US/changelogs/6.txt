@@ -1,0 +1,6 @@
+Fix: the charts showed no data. The API returns resets_at with random
+sub-second jitter on every request, so samples never grouped into window
+cycles — nothing plotted and no trend could be fitted. Cycle identity is
+now rounded to the minute (existing logs heal on read), every sample
+draws a visible dot, and reset-time parsing tolerates UTC-offset
+timestamps on older Android versions.

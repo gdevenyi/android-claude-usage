@@ -105,8 +105,11 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
         canvas.drawLine(x(now, w), 0f, x(now, w), h, thin)
 
         for (s in series) {
-            // History: one path per cycle, so resets break the line.
+            // History: one path per cycle, so resets break the line. Each
+            // sample also gets a dot — a one-sample cycle has no line at all.
             line.color = s.color
+            fill.color = s.color
+            val dot = line.strokeWidth * 0.8f
             var path: Path? = null
             var prevR = 0L
             for (p in s.points) {
@@ -117,6 +120,7 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
                 } else {
                     path.lineTo(x(p.t, w), y(p.p, h))
                 }
+                canvas.drawCircle(x(p.t, w), y(p.p, h), dot, fill)
                 prevR = p.r
             }
             path?.let { canvas.drawPath(it, line) }

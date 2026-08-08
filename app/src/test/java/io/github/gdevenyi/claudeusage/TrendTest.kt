@@ -90,4 +90,14 @@ class TrendTest {
         // Stale: newest sample older than an hour.
         assertNull(Trend.predict(rising, History.SESSION_MS, now = t0 + 4 * h))
     }
+
+    @Test
+    fun resetJitterRoundsToOneCycle() {
+        // The API recomputes resets_at per request with sub-second jitter,
+        // even across a second boundary — all must key to the same cycle.
+        val a = History.roundReset(1_755_162_000_217L) // ..:00.217
+        val b = History.roundReset(1_755_161_999_718L) // ..59.718 the fetch before
+        assertEquals(a, b)
+        assertEquals(0L, a % 60_000)
+    }
 }

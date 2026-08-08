@@ -21,6 +21,15 @@ object History {
 
     data class Point(val t: Long, val p: Double, val r: Long)
 
+    /**
+     * resets_at comes back with per-request sub-second jitter (it can even
+     * straddle a second boundary), and cycle identity is exact equality on r.
+     * Rounding to the minute merges the jitter and can never merge two real
+     * cycles, which sit hours or days apart. Applied on write and on read, so
+     * samples logged before this fix heal too.
+     */
+    internal fun roundReset(ms: Long) = (ms + 30_000) / 60_000 * 60_000
+
     /** A confident fit. runOutAt is null when the trend never reaches 100%. */
     data class Prediction(
         val resetsAt: Long,
@@ -38,7 +47,7 @@ object History {
         val w = JSONObject()
         fun put(name: String, win: Usage.Window?) {
             val at = win?.resetsAt ?: return // no resets_at: can't cycle it
-            w.put(name, JSONObject().put("p", win.pct).put("r", at.toEpochMilli()))
+            w.put(name, JSONObject().put("p", win.pct).put("r", roundReset(at.toEpochMilli())))
         }
         put("session", d.session)
         put("weekly", d.weekly)
@@ -75,7 +84,7 @@ object History {
             for (k in w.keys()) {
                 val o = w.optJSONObject(k) ?: continue
                 val r = o.optLong("r").takeIf { it > 0 } ?: continue
-                out.getOrPut(k) { mutableListOf() } += Point(t, o.optDouble("p"), r)
+                out.getOrPut(k) { mutableListOf() } += Point(t, o.optDouble("p"), roundReset(r))
             }
         }
         return out
