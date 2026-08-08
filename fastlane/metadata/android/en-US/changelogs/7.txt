@@ -1,0 +1,1 @@
+Fix: the "now" axis label no longer clips at the chart's right edge.

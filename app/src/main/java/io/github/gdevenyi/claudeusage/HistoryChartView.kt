@@ -144,6 +144,12 @@ class HistoryChartView(context: Context, attrs: AttributeSet?) : View(context, a
         // Y labels ride the top gridline; x labels sit in the bottom band.
         canvas.drawText("100%", 2f, y(100.0, h) + text.textSize, text)
         canvas.drawText(startLabel, 0f, height.toFloat() - text.textSize * 0.3f, text)
-        canvas.drawText("now", x(now, w) - text.measureText("now") / 2, height.toFloat() - text.textSize * 0.3f, text)
+        // Clamped: with no future extension "now" sits on the right edge.
+        val nowW = text.measureText("now")
+        canvas.drawText(
+            "now",
+            (x(now, w) - nowW / 2).coerceIn(0f, w - nowW),
+            height.toFloat() - text.textSize * 0.3f, text,
+        )
     }
 }
