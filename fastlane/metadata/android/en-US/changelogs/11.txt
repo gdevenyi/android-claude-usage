@@ -1,0 +1,8 @@
+A notification now tells you the moment the 5 h session quota resets. It
+has its own channel, so you can mute just that one and keep the ongoing
+usage notification.
+
+The per-model weekly limit shows its run-out forecast too, on the model row
+of the expanded notification and in the widget's by-model section.
+
+Settings gained a link to the releases page on GitHub.
