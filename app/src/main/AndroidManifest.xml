@@ -38,5 +38,9 @@
             android:name=".RefreshReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".ResetReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>

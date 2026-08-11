@@ -29,6 +29,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         }
         UsageWidget().updateAll(applicationContext)
         Notif.update(applicationContext)
+        Notif.armReset(applicationContext, Usage.cached(applicationContext)?.session?.resetsAt)
         return Result.success()
     }
 

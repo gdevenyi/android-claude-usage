@@ -1,10 +1,12 @@
 package io.github.gdevenyi.claudeusage
 
 import android.Manifest
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -72,12 +74,15 @@ object Fmt {
 object Notif {
     private const val CHANNEL = "usage"
     private const val ID = 1
+    private const val RESET_CHANNEL = "reset"
+    private const val RESET_ID = 2
 
     fun update(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         val store = Store(ctx)
         if (!store.notifEnabled || !store.loggedIn) {
             nm.cancel(ID)
+            nm.cancel(RESET_ID)
             return
         }
         if (ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
@@ -90,10 +95,7 @@ object Notif {
 
         // Tapping opens the app (where the charts live); the action button
         // below keeps an in-place refresh available.
-        val open = PendingIntent.getActivity(
-            ctx, 0, Intent(ctx, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+        val open = openIntent(ctx)
         val refresh = PendingIntent.getBroadcast(
             ctx, 0, Intent(ctx, RefreshReceiver::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -149,6 +151,58 @@ object Notif {
         }
         val n = builder.build()
         nm.notify(ID, n)
+    }
+
+    private fun openIntent(ctx: Context) = PendingIntent.getActivity(
+        ctx, 0, Intent(ctx, MainActivity::class.java),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
+    /**
+     * Ping when the 5 h window rolls over. An inexact wake-up alarm: it needs
+     * no permission and still fires in Doze, which a WorkManager delay would
+     * not — the phone sits idle on the desk exactly when this matters. Re-armed
+     * from every refresh, so the newest resets_at wins, a reboot recovers with
+     * the next poll, and a stale (already past) reset cancels instead of firing.
+     */
+    fun armReset(ctx: Context, at: Instant?) {
+        val am = ctx.getSystemService(AlarmManager::class.java)
+        val pi = PendingIntent.getBroadcast(
+            ctx, 1, Intent(ctx, ResetReceiver::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val store = Store(ctx)
+        val ms = at?.toEpochMilli() ?: 0
+        if (ms <= System.currentTimeMillis() || !store.notifEnabled || !store.loggedIn) {
+            am.cancel(pi)
+            return
+        }
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ms, pi)
+    }
+
+    /** The alarm fired: the 5 h quota is fresh again. */
+    fun resetAlert(ctx: Context) {
+        val store = Store(ctx)
+        if (!store.notifEnabled || !store.loggedIn) return
+        if (ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        // Its own channel: this one is meant to alert, unlike the silent
+        // ongoing one, so it is also the switch for muting just this.
+        nm.createNotificationChannel(
+            NotificationChannel(RESET_CHANNEL, "Quota reset", NotificationManager.IMPORTANCE_DEFAULT)
+        )
+        nm.notify(
+            RESET_ID,
+            Notification.Builder(ctx, RESET_CHANNEL)
+                .setSmallIcon(R.drawable.ic_stat)
+                .setContentTitle("Session quota reset")
+                .setContentText("The 5 h window is fresh again")
+                .setContentIntent(openIntent(ctx))
+                .setAutoCancel(true)
+                .build(),
+        )
     }
 
     private fun severityColor(pct: Int) = when {
@@ -226,5 +280,13 @@ object Notif {
             else "Updated ${Fmt.age(d.fetchedAt)} · tap to open",
         )
         return v
+    }
+}
+
+/** The 5 h window just rolled over: alert, then pull the fresh numbers. */
+class ResetReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        Notif.resetAlert(context)
+        RefreshWorker.refreshNow(context)
     }
 }
