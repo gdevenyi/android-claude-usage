@@ -125,6 +125,15 @@ class MainActivity : AppCompatActivity() {
             updateUi()
         }
 
+        findViewById<MaterialButton>(R.id.releasesBtn).setOnClickListener {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://github.com/gdevenyi/android-claude-usage/releases"),
+                )
+            )
+        }
+
         findViewById<MaterialSwitch>(R.id.notifSwitch).setOnCheckedChangeListener(onNotifToggle)
         // One automatic ask, on first launch only. Android 13 stops showing
         // the dialog after two denials, so repeated surprise prompts on every
