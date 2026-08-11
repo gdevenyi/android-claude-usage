@@ -38,6 +38,10 @@ object Fmt {
             else -> "resets in ${until(at)}$out"
         }
 
+    /** The " · out ~14:20" tail: the fit's 100% crossing, when it beats the reset. */
+    fun outMark(p: History.Prediction?, withDay: Boolean): String =
+        p?.takeIf { it.atRisk }?.let { " · out ~${clock(it.runOutAt!!, withDay)}" } ?: ""
+
     /** Time left until a window resets, e.g. "3h 43m" or "6d 15h". */
     fun until(at: Instant?): String {
         at ?: return ""
@@ -190,20 +194,26 @@ object Notif {
             v.setColor(pctId, "setTextColor", severityColor(pct))
             v.setProgressBar(barId, 100, pct, false)
             v.setColorStateList(barId, "setProgressTintList", severityColor(pct))
-            val out = pred?.takeIf { it.atRisk }
-                ?.let { " · out ~${Fmt.clock(it.runOutAt!!, withDay)}" } ?: ""
-            v.setTextViewText(resetId, Fmt.resetLine(w?.resetsAt, withDay, detailed = true, out))
+            v.setTextViewText(
+                resetId,
+                Fmt.resetLine(w?.resetsAt, withDay, detailed = true, Fmt.outMark(pred, withDay)),
+            )
         }
 
         block(R.id.sessionPct, R.id.sessionBar, R.id.sessionReset, d.session, false, preds["session"])
         block(R.id.weeklyPct, R.id.weeklyBar, R.id.weeklyReset, d.weekly, true, preds["weekly"])
 
-        val model = d.scoped.firstOrNull()
+        // One model row, so an at-risk model outranks the API's ordering: the
+        // one about to run out is the one worth the space.
+        val model = d.scoped.firstOrNull { preds[it.name]?.atRisk == true } ?: d.scoped.firstOrNull()
         if (model == null) {
             v.setViewVisibility(R.id.modelRow, View.GONE)
         } else {
             v.setViewVisibility(R.id.modelRow, View.VISIBLE)
-            v.setTextViewText(R.id.modelName, "${model.name} (7d)")
+            // No room for a reset line here — the forecast rides the name.
+            v.setTextViewText(
+                R.id.modelName, "${model.name} (7d)" + Fmt.outMark(preds[model.name], true),
+            )
             v.setTextViewText(R.id.modelPct, "${model.window.pctInt}%")
             v.setColor(R.id.modelPct, "setTextColor", severityColor(model.window.pctInt))
             v.setProgressBar(R.id.modelBar, 100, model.window.pctInt, false)

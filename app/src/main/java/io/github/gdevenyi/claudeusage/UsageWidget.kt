@@ -164,7 +164,7 @@ class UsageWidget : GlanceAppWidget() {
 
         if (detailed) {
             Spacer(GlanceModifier.defaultWeight())
-            Footer(d, scale)
+            Footer(d, scale, preds)
         }
     }
 
@@ -265,10 +265,8 @@ class UsageWidget : GlanceAppWidget() {
             )
             if (showResets) {
                 Spacer(GlanceModifier.height((Space.XS * scale).dp))
-                val out = pred?.takeIf { it.atRisk }
-                    ?.let { " · out ~${Fmt.clock(it.runOutAt!!, withDay)}" } ?: ""
                 Text(
-                    Fmt.resetLine(w?.resetsAt, withDay, detailed, out),
+                    Fmt.resetLine(w?.resetsAt, withDay, detailed, Fmt.outMark(pred, withDay)),
                     maxLines = 1,
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,
@@ -280,7 +278,7 @@ class UsageWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun Footer(d: Usage.Data, scale: Float) {
+    private fun Footer(d: Usage.Data, scale: Float, preds: Map<String, History.Prediction>) {
         Column(modifier = GlanceModifier.fillMaxWidth()) {
             if (d.scoped.isNotEmpty()) {
                 Text(
@@ -323,6 +321,21 @@ class UsageWidget : GlanceAppWidget() {
                             ),
                         )
                     }
+                }
+                // A model row has no width left for a reset line, so the
+                // forecast gets its own — and only when there is one to show,
+                // which keeps the tier's height budget intact the rest of the
+                // time. Rows above are flush, so no spacer.
+                val risk = d.scoped.firstOrNull { preds[it.name]?.atRisk == true }
+                if (risk != null) {
+                    Text(
+                        risk.name + Fmt.outMark(preds[risk.name], true),
+                        maxLines = 1,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = (Type.BODY_SMALL * scale).sp,
+                        ),
+                    )
                 }
                 Spacer(GlanceModifier.height((Space.SM * scale).dp))
             }
