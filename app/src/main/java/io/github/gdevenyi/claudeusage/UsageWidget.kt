@@ -238,7 +238,7 @@ class UsageWidget : GlanceAppWidget() {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    label,
+                    Fmt.label(label, w),
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
                         fontSize = (Type.TITLE_SMALL * scale).sp,
@@ -296,7 +296,7 @@ class UsageWidget : GlanceAppWidget() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            s.name,
+                            Fmt.label(s.name, s.window),
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurfaceVariant,
                                 fontSize = (Type.BODY_MEDIUM * scale).sp,
