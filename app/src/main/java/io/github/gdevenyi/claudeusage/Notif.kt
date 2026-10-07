@@ -43,6 +43,14 @@ object Fmt {
     /** A window label, with " ●" when it is the limit that binds right now. */
     fun label(text: String, w: Usage.Window?): String = if (w?.active == true) "$text ●" else text
 
+    /**
+     * A model limit's own reset, or null when it matches the weekly one.
+     * resets_at jitters per request, so "matches" means within a minute.
+     */
+    fun ownReset(model: Instant?, weekly: Instant?): Instant? = model?.takeIf {
+        weekly == null || kotlin.math.abs(it.toEpochMilli() - weekly.toEpochMilli()) > 60_000
+    }
+
     /** The " · out ~14:20" tail: the fit's 100% crossing, when it beats the reset. */
     fun outMark(p: History.Prediction?, withDay: Boolean): String =
         p?.takeIf { it.atRisk }?.let { " · out ~${clock(it.runOutAt!!, withDay)}" } ?: ""
