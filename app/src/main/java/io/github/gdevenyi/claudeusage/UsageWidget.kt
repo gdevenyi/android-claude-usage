@@ -249,7 +249,7 @@ class UsageWidget : GlanceAppWidget() {
                 Text(
                     "$pct%",
                     style = TextStyle(
-                        color = severity(pct),
+                        color = severity(w),
                         fontSize = (Type.TITLE_LARGE * scale).sp,
                         fontWeight = FontWeight.Medium,
                     ),
@@ -260,7 +260,7 @@ class UsageWidget : GlanceAppWidget() {
                 progress = pct / 100f,
                 // M3 linear progress is a 4dp track.
                 modifier = GlanceModifier.fillMaxWidth().height((Space.XS * scale).dp),
-                color = severity(pct),
+                color = severity(w),
                 backgroundColor = GlanceTheme.colors.surfaceVariant,
             )
             if (showResets) {
@@ -308,14 +308,14 @@ class UsageWidget : GlanceAppWidget() {
                             modifier = GlanceModifier
                                 .width((72f * scale).dp)
                                 .height((Space.XS * scale).dp),
-                            color = severity(s.window.pctInt),
+                            color = severity(s.window),
                             backgroundColor = GlanceTheme.colors.surfaceVariant,
                         )
                         Spacer(GlanceModifier.width((Space.SM * scale).dp))
                         Text(
                             "${s.window.pctInt}%",
                             style = TextStyle(
-                                color = severity(s.window.pctInt),
+                                color = severity(s.window),
                                 fontSize = (Type.LABEL_LARGE * scale).sp,
                                 fontWeight = FontWeight.Medium,
                             ),
@@ -360,14 +360,14 @@ class UsageWidget : GlanceAppWidget() {
         ) {
             Logo(scale)
             Spacer(GlanceModifier.width((Space.SM * scale).dp))
-            Pct("S", d.session?.pctInt ?: 0, scale)
+            Pct("S", d.session, scale)
             Spacer(GlanceModifier.width((Space.MD * scale).dp))
-            Pct("W", d.weekly?.pctInt ?: 0, scale)
+            Pct("W", d.weekly, scale)
         }
     }
 
     @Composable
-    private fun Pct(label: String, pct: Int, scale: Float) {
+    private fun Pct(label: String, w: Usage.Window?, scale: Float) {
         Text(
             "$label ",
             style = TextStyle(
@@ -377,9 +377,9 @@ class UsageWidget : GlanceAppWidget() {
             ),
         )
         Text(
-            "$pct%",
+            "${w?.pctInt ?: 0}%",
             style = TextStyle(
-                color = severity(pct),
+                color = severity(w),
                 fontSize = (Type.TITLE_LARGE * scale).sp,
                 fontWeight = FontWeight.Medium,
             ),
@@ -420,11 +420,5 @@ class UsageWidget : GlanceAppWidget() {
      * and that reading is the point of the widget. Tones are picked per theme
      * so they stay legible on both a light and a dark widget background.
      */
-    private fun severity(pct: Int): ColorProvider = ColorProvider(
-        when {
-            pct < 50 -> R.color.usage_ok
-            pct < 80 -> R.color.usage_warn
-            else -> R.color.usage_crit
-        }
-    )
+    private fun severity(w: Usage.Window?): ColorProvider = ColorProvider(Severity.colorRes(w))
 }
