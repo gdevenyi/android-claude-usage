@@ -24,10 +24,11 @@ object Severity {
     }
 
     /** The colour resource for a window, per theme via values-night. */
-    fun colorRes(w: Usage.Window?): Int =
-        when (level(w?.pctInt ?: 0, w?.severity.orEmpty())) {
-            0 -> R.color.usage_ok
-            1 -> R.color.usage_warn
-            else -> R.color.usage_crit
-        }
+    fun colorRes(w: Usage.Window?): Int = colorForLevel(level(w?.pctInt ?: 0, w?.severity.orEmpty()))
+
+    fun colorForLevel(level: Int): Int = when (level) {
+        0 -> R.color.usage_ok
+        1 -> R.color.usage_warn
+        else -> R.color.usage_crit
+    }
 }

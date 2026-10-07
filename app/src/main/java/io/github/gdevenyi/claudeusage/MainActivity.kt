@@ -224,8 +224,31 @@ class MainActivity : AppCompatActivity() {
             row.findViewById<TextView>(R.id.sharePct).text = "${sh.pct.roundToInt()}%"
             rows.addView(row)
         }
+
+        val extra = d?.extra
+        listOf(R.id.extraTitle, R.id.extraRow, R.id.extraBar).forEach {
+            findViewById<View>(it).visibility = if (extra == null) View.GONE else View.VISIBLE
+        }
+        val reason = findViewById<TextView>(R.id.extraReason)
+        reason.visibility = if (extra?.disabledReason.isNullOrEmpty()) View.GONE else View.VISIBLE
+        if (extra != null) {
+            findViewById<TextView>(R.id.extraSpent).text =
+                "${extra.money(extra.used)} / ${extra.money(extra.limit)} spent"
+            // Money spent is a risk, so this one does take the traffic lights.
+            val color = getColor(Severity.colorForLevel(Severity.level(extra.pct, "")))
+            findViewById<TextView>(R.id.extraPct).apply {
+                text = "${extra.pct}%"
+                setTextColor(color)
+            }
+            findViewById<LinearProgressIndicator>(R.id.extraBar).apply {
+                progress = extra.pct.coerceAtMost(100)
+                setIndicatorColor(color)
+            }
+            reason.text = "Disabled: ${extra.disabledReason.replace('_', ' ')}"
+        }
+
         findViewById<View>(R.id.details).visibility =
-            if (shares.isEmpty()) View.GONE else View.VISIBLE
+            if (shares.isEmpty() && extra == null) View.GONE else View.VISIBLE
     }
 
     private fun updateCharts() {

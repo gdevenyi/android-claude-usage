@@ -1,6 +1,7 @@
 package io.github.gdevenyi.claudeusage
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -43,5 +44,30 @@ class UsageParseTest {
     @Test
     fun noBreakdownIsEmpty() {
         assertTrue(Usage.parse("{}", 0)!!.breakdown.isEmpty())
+    }
+
+    private fun extra(json: String) = Usage.parse("""{"extra_usage": $json}""", 0)!!.extra
+
+    @Test
+    fun extraUsageInTheAccountCurrency() {
+        val e = extra(
+            """{"is_enabled": true, "monthly_limit": 5000, "used_credits": 1240,
+               "currency": "EUR", "decimal_places": 2}"""
+        )!!
+        assertEquals("12.40 EUR / 50.00 EUR", "${e.money(e.used)} / ${e.money(e.limit)}")
+        assertEquals(25, e.pct)
+        assertEquals("$3", Usage.Extra(3.0, 10.0, "USD", 0, true, "").money(3.0))
+    }
+
+    @Test
+    fun extraUsageShowsTheServerReasonButNotAUserChoice() {
+        assertEquals(
+            "out_of_credits",
+            extra("""{"is_enabled": false, "monthly_limit": 5000, "disabled_reason": "out_of_credits"}""")!!
+                .disabledReason,
+        )
+        assertNull(extra("""{"is_enabled": false, "user_disabled": true, "monthly_limit": 5000,
+                             "disabled_reason": "user"}"""))
+        assertNull(extra("""{"is_enabled": true, "monthly_limit": 0}"""))
     }
 }
