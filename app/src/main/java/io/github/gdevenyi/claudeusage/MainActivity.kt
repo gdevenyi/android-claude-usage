@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.CompoundButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -19,8 +20,10 @@ import com.google.android.material.color.MaterialColors
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputLayout
+import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -200,7 +203,29 @@ class MainActivity : AppCompatActivity() {
         sw.setOnCheckedChangeListener(null)
         sw.isChecked = store.notifEnabled
         sw.setOnCheckedChangeListener(onNotifToggle)
+        updateDetails()
         updateCharts()
+    }
+
+    /** What the widget has no room for. The section hides while empty. */
+    private fun updateDetails() {
+        val d = if (Store(this).loggedIn) Usage.cached(this) else null
+        val shares = d?.breakdown.orEmpty()
+        findViewById<TextView>(R.id.productTitle).visibility =
+            if (shares.isEmpty()) View.GONE else View.VISIBLE
+        val rows = findViewById<LinearLayout>(R.id.productRows)
+        rows.removeAllViews()
+        shares.forEach { sh ->
+            // A share is not a risk: the bar keeps the default primary
+            // colour, not the traffic lights.
+            val row = layoutInflater.inflate(R.layout.share_row, rows, false)
+            row.findViewById<TextView>(R.id.shareName).text = sh.name
+            row.findViewById<LinearProgressIndicator>(R.id.shareBar).progress = sh.pct.roundToInt()
+            row.findViewById<TextView>(R.id.sharePct).text = "${sh.pct.roundToInt()}%"
+            rows.addView(row)
+        }
+        findViewById<View>(R.id.details).visibility =
+            if (shares.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun updateCharts() {

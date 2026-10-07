@@ -76,8 +76,13 @@ custom base-URL/proxy mode, i18n (English only).
   Collapsed = the headline percentages, session bar, session countdown;
   expanded = both windows with bars and reset times, the by-model row, and
   the updated-at line. Tap = refresh in place.
-- **Activity**: settings only — Log in/Log out with Claude (status + plan),
-  notification on/off, refresh interval 15/30/60 min.
+- **Activity**: settings — Log in/Log out with Claude (status + plan),
+  notification on/off, refresh interval 15/30/60 min — then a **Details**
+  section for what the widget has no room for, then the charts.
+  Details shows the weekly share per product (`seven_day_breakdown.rows`:
+  Claude Code, Chats, …) as bars in the primary colour, since a share is
+  not a risk. It counts all products, as it comes from the server. The
+  section hides while it has nothing to show.
 
 ## Styling — Material 3
 
