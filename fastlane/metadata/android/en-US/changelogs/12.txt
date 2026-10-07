@@ -1,0 +1,10 @@
+New run-out alert: when, at your current pace, the session, the week or a
+model's limit runs out before it resets. Once per window, with its own
+switch and channel.
+
+A dot marks the limit that applies now. Colours follow the server's
+warning level. A model limit that resets apart from the week shows its
+own reset time.
+
+New Details section in the app: weekly usage per product and your
+extra-usage budget.
