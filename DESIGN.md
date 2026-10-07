@@ -81,8 +81,12 @@ custom base-URL/proxy mode, i18n (English only).
   section for what the widget has no room for, then the charts.
   Details shows the weekly share per product (`seven_day_breakdown.rows`:
   Claude Code, Chats, …) as bars in the primary colour, since a share is
-  not a risk. It counts all products, as it comes from the server. The
-  section hides while it has nothing to show.
+  not a risk. It counts all products, as it comes from the server. Below
+  it, the extra-usage budget (`extra_usage`): "€12.40 / €50.00 spent"
+  in the account's own currency and `decimal_places`, with a bar in the
+  traffic lights (money spent is a risk), and "Disabled: out of credits"
+  when the server holds the budget off. A budget the user turned off
+  stays hidden. The section hides while it has nothing to show.
 
 ## Styling — Material 3
 

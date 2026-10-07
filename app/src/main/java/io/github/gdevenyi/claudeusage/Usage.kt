@@ -6,6 +6,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 import java.time.OffsetDateTime
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /** Fetches and caches https://api.anthropic.com/api/oauth/usage. */
@@ -33,12 +34,34 @@ object Usage {
     data class Scoped(val name: String, val window: Window)
     /** One product's share of the weekly usage, e.g. "Claude Code" 62%. */
     data class Share(val name: String, val pct: Double)
+    /**
+     * The paid overage budget. Amounts are in minor units (cents) of the
+     * account's own currency. disabledReason is set when the server turned
+     * it off (e.g. "out_of_credits"), not when the user did.
+     */
+    data class Extra(
+        val used: Double,
+        val limit: Double,
+        val currency: String,
+        val decimals: Int,
+        val enabled: Boolean,
+        val disabledReason: String,
+    ) {
+        val pct: Int get() = if (limit > 0) (used * 100 / limit).roundToInt() else 0
+
+        fun money(minor: Double): String {
+            val v = String.format(java.util.Locale.ROOT, "%.${decimals}f", minor / 10.0.pow(decimals))
+            return if (currency == "USD") "$$v" else "$v $currency"
+        }
+    }
+
     data class Data(
         val session: Window?,
         val weekly: Window?,
         val scoped: List<Scoped>,
         val fetchedAt: Long,
         val breakdown: List<Share> = emptyList(),
+        val extra: Extra? = null,
     )
 
     fun fetchAndCache(ctx: Context) {
@@ -157,6 +180,23 @@ object Usage {
                 if (pct > 0 && name.isNotEmpty()) breakdown += Share(name, pct)
             }
         }
-        return Data(session, weekly, scoped, fetchedAt, breakdown)
+        // Shown while it is on, or while the server holds it off (say, out
+        // of credits); a budget the user turned off themselves stays hidden.
+        val extra = j.optJSONObject("extra_usage")?.let { e ->
+            val limit = e.optDouble("monthly_limit", 0.0)
+            val enabled = e.optBoolean("is_enabled")
+            val reason = if (!enabled && !e.optBoolean("user_disabled")) {
+                e.optString("disabled_reason").takeUnless { it == "null" }.orEmpty()
+            } else ""
+            Extra(
+                used = e.optDouble("used_credits", 0.0),
+                limit = limit,
+                currency = e.optString("currency").ifEmpty { "USD" },
+                decimals = e.optInt("decimal_places", 2),
+                enabled = enabled,
+                disabledReason = reason,
+            ).takeIf { limit > 0 && (enabled || reason.isNotEmpty()) }
+        }
+        return Data(session, weekly, scoped, fetchedAt, breakdown, extra)
     }
 }
