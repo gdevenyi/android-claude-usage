@@ -40,6 +40,9 @@ object Fmt {
             else -> "resets in ${until(at)}$out"
         }
 
+    /** A window label, with " ●" when it is the limit that binds right now. */
+    fun label(text: String, w: Usage.Window?): String = if (w?.active == true) "$text ●" else text
+
     /** The " · out ~14:20" tail: the fit's 100% crossing, when it beats the reset. */
     fun outMark(p: History.Prediction?, withDay: Boolean): String =
         p?.takeIf { it.atRisk }?.let { " · out ~${clock(it.runOutAt!!, withDay)}" } ?: ""
@@ -228,6 +231,8 @@ object Notif {
         val v = RemoteViews(ctx.packageName, R.layout.notif_expanded)
 
         fun block(
+            labelId: Int,
+            label: String,
             pctId: Int,
             barId: Int,
             resetId: Int,
@@ -236,6 +241,7 @@ object Notif {
             pred: History.Prediction?,
         ) {
             val pct = w?.pctInt ?: 0
+            v.setTextViewText(labelId, Fmt.label(label, w))
             v.setTextViewText(pctId, "$pct%")
             // Resolve at apply time (like the bar tints) so a light/dark
             // switch re-inflates with the right palette, not a baked-in one.
@@ -248,8 +254,8 @@ object Notif {
             )
         }
 
-        block(R.id.sessionPct, R.id.sessionBar, R.id.sessionReset, d.session, false, preds["session"])
-        block(R.id.weeklyPct, R.id.weeklyBar, R.id.weeklyReset, d.weekly, true, preds["weekly"])
+        block(R.id.sessionLabel, "Session (5h)", R.id.sessionPct, R.id.sessionBar, R.id.sessionReset, d.session, false, preds["session"])
+        block(R.id.weeklyLabel, "Weekly (7d)", R.id.weeklyPct, R.id.weeklyBar, R.id.weeklyReset, d.weekly, true, preds["weekly"])
 
         // One model row, so an at-risk model outranks the API's ordering: the
         // one about to run out is the one worth the space.
@@ -260,7 +266,7 @@ object Notif {
             v.setViewVisibility(R.id.modelRow, View.VISIBLE)
             // No room for a reset line here — the forecast rides the name.
             v.setTextViewText(
-                R.id.modelName, "${model.name} (7d)" + Fmt.outMark(preds[model.name], true),
+                R.id.modelName, Fmt.label("${model.name} (7d)", model.window) + Fmt.outMark(preds[model.name], true),
             )
             v.setTextViewText(R.id.modelPct, "${model.window.pctInt}%")
             v.setColor(R.id.modelPct, "setTextColor", Severity.colorRes(model.window))

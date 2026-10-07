@@ -109,6 +109,9 @@ Both surfaces follow the M3 token conventions rather than ad-hoc values:
   carries a server `severity`; it can raise the level, never lower it.
   Only `"normal"` has been seen: `"warning"` → yellow and any other value
   → red are guesses (as in the plasma widget).
+- The `limits` entry with `is_active: true` is the limit that binds right
+  now. Its label gets a " ●" on the widget (2+ rows), the expanded
+  notification and the chart titles.
 
 ## Stack & release
 

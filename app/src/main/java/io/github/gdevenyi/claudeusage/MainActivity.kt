@@ -218,6 +218,9 @@ class MainActivity : AppCompatActivity() {
         val weeklyMarks = hist["weekly"].orEmpty().map { it.r }.distinct()
         val modelKey = hist.keys.firstOrNull { it.contains("fable", ignoreCase = true) }
             ?: (hist.keys - setOf("session", "weekly")).firstOrNull()
+        // Titles carry the " ●" of the limit that binds right now.
+        val d = Usage.cached(this)
+        val modelLabel = modelKey?.let { k -> Fmt.label(k, d?.scoped?.firstOrNull { it.name == k }?.window) }
 
         // The window figures span the full current quota window (start to
         // reset), so the dashed trend visibly races the right edge. Between
@@ -228,6 +231,8 @@ class MainActivity : AppCompatActivity() {
             else Triple(now - ms, now, "now")
         }
 
+        findViewById<TextView>(R.id.sessionTitle).text =
+            Fmt.label("Session", d?.session) + " — current 5 h window"
         val (sMin, sMax, sEnd) = window("session", History.SESSION_MS, false)
         findViewById<HistoryChartView>(R.id.sessionChart).show(
             listOf(HistoryChartView.Series(hist["session"].orEmpty(), preds["session"], primary)),
@@ -240,9 +245,10 @@ class MainActivity : AppCompatActivity() {
             HistoryChartView.Series(hist["weekly"].orEmpty(), preds["weekly"], primary)
         )
         modelKey?.let { weeklySeries += HistoryChartView.Series(hist[it].orEmpty(), preds[it], tertiary) }
+        val weeklyLabel = Fmt.label("Weekly", d?.weekly)
         findViewById<TextView>(R.id.weeklyTitle).text =
-            if (modelKey != null) "Weekly & $modelKey — current 7 d window"
-            else "Weekly — current 7 d window"
+            if (modelLabel != null) "$weeklyLabel & $modelLabel — current 7 d window"
+            else "$weeklyLabel — current 7 d window"
         val (wMin, wMax, wEnd) = window("weekly", History.WEEKLY_MS, true)
         findViewById<HistoryChartView>(R.id.weeklyChart).show(
             weeklySeries, wMin, wMax, now, Fmt.clock(wMin, true), wEnd, weeklyMarks, grid, label,
