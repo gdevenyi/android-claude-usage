@@ -91,6 +91,14 @@
             android:textAppearance="?attr/textAppearanceBodyLarge"
             android:text="Ongoing notification" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/alertSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:text="Run-out alerts" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
