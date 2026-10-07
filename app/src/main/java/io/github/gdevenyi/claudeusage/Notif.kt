@@ -40,8 +40,8 @@ object Fmt {
             else -> "resets in ${until(at)}$out"
         }
 
-    /** A window label, with " ●" when it is the limit that binds right now. */
-    fun label(text: String, w: Usage.Window?): String = if (w?.active == true) "$text ●" else text
+    /** A window label, with " •" when it is the limit that binds right now. */
+    fun label(text: String, w: Usage.Window?): String = if (w?.active == true) "$text •" else text
 
     /**
      * A model limit's own reset, or null when it matches the weekly one.
