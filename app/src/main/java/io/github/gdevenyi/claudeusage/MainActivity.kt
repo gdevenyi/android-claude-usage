@@ -196,7 +196,7 @@ class MainActivity : AppCompatActivity() {
                 "Logged in",
                 store.plan.ifEmpty { null },
                 Usage.cached(this)
-                    ?.let { "session ${it.session?.pct ?: 0}%, weekly ${it.weekly?.pct ?: 0}%" },
+                    ?.let { "session ${it.session?.pctInt ?: 0}%, weekly ${it.weekly?.pctInt ?: 0}%" },
             ).joinToString(" · ")
             else -> "Not logged in"
         }
@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity() {
         val weeklyMarks = hist["weekly"].orEmpty().map { it.r }.distinct()
         val modelKey = hist.keys.firstOrNull { it.contains("fable", ignoreCase = true) }
             ?: (hist.keys - setOf("session", "weekly")).firstOrNull()
-        // Titles carry the " ●" of the limit that binds right now.
+        // Titles carry the " •" of the limit that binds right now.
         val d = Usage.cached(this)
         val modelLabel = modelKey?.let { k -> Fmt.label(k, d?.scoped?.firstOrNull { it.name == k }?.window) }
 

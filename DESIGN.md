@@ -127,7 +127,7 @@ Both surfaces follow the M3 token conventions rather than ad-hoc values:
   Only `"normal"` has been seen: `"warning"` → yellow and any other value
   → red are guesses (as in the plasma widget).
 - The `limits` entry with `is_active: true` is the limit that binds right
-  now. Its label gets a " ●" on the widget (2+ rows), the expanded
+  now. Its label gets a " •" on the widget (2+ rows), the expanded
   notification and the chart titles.
 - A per-model limit can reset at a different time from the weekly window.
   When its `resets_at` is more than 1 min from the weekly one, the widget's
