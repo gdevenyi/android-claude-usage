@@ -126,6 +126,29 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp" />
 
+        <!-- Details: what the widget has no room for. Hidden while empty. -->
+        <LinearLayout
+            android:id="@+id/details"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/productTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:text="Weekly by product" />
+
+            <LinearLayout
+                android:id="@+id/productRows"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/sessionTitle"
             android:layout_width="match_parent"

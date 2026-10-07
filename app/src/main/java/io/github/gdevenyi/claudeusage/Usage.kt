@@ -31,11 +31,14 @@ object Usage {
         val pctInt: Int get() = pct.roundToInt()
     }
     data class Scoped(val name: String, val window: Window)
+    /** One product's share of the weekly usage, e.g. "Claude Code" 62%. */
+    data class Share(val name: String, val pct: Double)
     data class Data(
         val session: Window?,
         val weekly: Window?,
         val scoped: List<Scoped>,
         val fetchedAt: Long,
+        val breakdown: List<Share> = emptyList(),
     )
 
     fun fetchAndCache(ctx: Context) {
@@ -91,7 +94,11 @@ object Usage {
 
     fun cached(ctx: Context): Data? {
         val s = Store(ctx)
-        val raw = s.cachedUsage ?: return null
+        return parse(s.cachedUsage ?: return null, s.cachedAt)
+    }
+
+    /** Pure, so a JVM test can feed it a response body. */
+    fun parse(raw: String, fetchedAt: Long): Data? {
         val j = try {
             JSONObject(raw)
         } catch (_: Exception) {
@@ -140,6 +147,16 @@ object Usage {
             window(j.optJSONObject("seven_day_opus"), "utilization")
                 ?.let { scoped += Scoped("Opus", it) }
         }
-        return Data(session, weekly, scoped, s.cachedAt)
+        // Server-side, so it counts the web and desktop apps too.
+        val breakdown = mutableListOf<Share>()
+        j.optJSONObject("seven_day_breakdown")?.optJSONArray("rows")?.let { rows ->
+            for (i in 0 until rows.length()) {
+                val r = rows.optJSONObject(i) ?: continue
+                val pct = r.optDouble("percent", 0.0)
+                val name = r.optString("display_name").ifEmpty { r.optString("key") }
+                if (pct > 0 && name.isNotEmpty()) breakdown += Share(name, pct)
+            }
+        }
+        return Data(session, weekly, scoped, fetchedAt, breakdown)
     }
 }
