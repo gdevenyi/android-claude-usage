@@ -19,7 +19,9 @@ object Usage {
 
     // Fractional percent straight from the API: displays round, but the
     // trend fit needs the resolution (integer steps quantize early slopes).
-    data class Window(val pct: Double, val resetsAt: Instant?) {
+    // severity is the server's own level for the window ("normal", ...);
+    // empty on the legacy fields, which don't carry one.
+    data class Window(val pct: Double, val resetsAt: Instant?, val severity: String = "") {
         val pctInt: Int get() = pct.roundToInt()
     }
     data class Scoped(val name: String, val window: Window)
@@ -98,7 +100,7 @@ object Usage {
                     runCatching { Instant.parse(it) }.getOrNull()
                         ?: runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull()
                 }
-            return Window(o.optDouble(pctKey, 0.0), resets)
+            return Window(o.optDouble(pctKey, 0.0), resets, o.optString("severity"))
         }
 
         var session = window(j.optJSONObject("five_hour"), "utilization")

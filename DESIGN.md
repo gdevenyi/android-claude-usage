@@ -105,7 +105,10 @@ Both surfaces follow the M3 token conventions rather than ad-hoc values:
 - WorkManager periodic refresh, default 15 min (platform floor).
 - Cache last good response; show data age when stale; dead token →
   "log in again" state in widget/notification.
-- Colors: green <50%, yellow <80%, red ≥80%.
+- Colors: green <50%, yellow <80%, red ≥80%. Each `limits` entry also
+  carries a server `severity`; it can raise the level, never lower it.
+  Only `"normal"` has been seen: `"warning"` → yellow and any other value
+  → red are guesses (as in the plasma widget).
 
 ## Stack & release
 

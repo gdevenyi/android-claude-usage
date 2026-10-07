@@ -205,12 +205,6 @@ object Notif {
         )
     }
 
-    private fun severityColor(pct: Int) = when {
-        pct < 50 -> R.color.usage_ok
-        pct < 80 -> R.color.usage_warn
-        else -> R.color.usage_crit
-    }
-
     private fun collapsedView(
         ctx: Context,
         d: Usage.Data,
@@ -222,7 +216,7 @@ object Notif {
             setTextViewText(R.id.headline, title)
             setTextViewText(R.id.subline, text)
             setProgressBar(R.id.collapsedBar, 100, pct, false)
-            setColorStateList(R.id.collapsedBar, "setProgressTintList", severityColor(pct))
+            setColorStateList(R.id.collapsedBar, "setProgressTintList", Severity.colorRes(d.session))
         }
     }
 
@@ -245,9 +239,9 @@ object Notif {
             v.setTextViewText(pctId, "$pct%")
             // Resolve at apply time (like the bar tints) so a light/dark
             // switch re-inflates with the right palette, not a baked-in one.
-            v.setColor(pctId, "setTextColor", severityColor(pct))
+            v.setColor(pctId, "setTextColor", Severity.colorRes(w))
             v.setProgressBar(barId, 100, pct, false)
-            v.setColorStateList(barId, "setProgressTintList", severityColor(pct))
+            v.setColorStateList(barId, "setProgressTintList", Severity.colorRes(w))
             v.setTextViewText(
                 resetId,
                 Fmt.resetLine(w?.resetsAt, withDay, detailed = true, Fmt.outMark(pred, withDay)),
@@ -269,9 +263,9 @@ object Notif {
                 R.id.modelName, "${model.name} (7d)" + Fmt.outMark(preds[model.name], true),
             )
             v.setTextViewText(R.id.modelPct, "${model.window.pctInt}%")
-            v.setColor(R.id.modelPct, "setTextColor", severityColor(model.window.pctInt))
+            v.setColor(R.id.modelPct, "setTextColor", Severity.colorRes(model.window))
             v.setProgressBar(R.id.modelBar, 100, model.window.pctInt, false)
-            v.setColorStateList(R.id.modelBar, "setProgressTintList", severityColor(model.window.pctInt))
+            v.setColorStateList(R.id.modelBar, "setProgressTintList", Severity.colorRes(model.window))
         }
 
         v.setTextViewText(
