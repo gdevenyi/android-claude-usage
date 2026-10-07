@@ -112,6 +112,10 @@ Both surfaces follow the M3 token conventions rather than ad-hoc values:
 - The `limits` entry with `is_active: true` is the limit that binds right
   now. Its label gets a " ●" on the widget (2+ rows), the expanded
   notification and the chart titles.
+- A per-model limit can reset at a different time from the weekly window.
+  When its `resets_at` is more than 1 min from the weekly one, the widget's
+  by-model row shows "resets Mon 09:00" after the name. The expanded
+  notification has no width for it.
 
 ## Stack & release
 

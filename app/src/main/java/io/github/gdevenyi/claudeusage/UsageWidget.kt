@@ -297,11 +297,25 @@ class UsageWidget : GlanceAppWidget() {
                     ) {
                         Text(
                             Fmt.label(s.name, s.window),
+                            maxLines = 1,
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurfaceVariant,
                                 fontSize = (Type.BODY_MEDIUM * scale).sp,
                             ),
                         )
+                        // A model limit can reset apart from the weekly one;
+                        // only then is its own reset worth the width.
+                        Fmt.ownReset(s.window.resetsAt, d.weekly?.resetsAt)?.let {
+                            Spacer(GlanceModifier.width((Space.XS * scale).dp))
+                            Text(
+                                "resets ${Fmt.reset(it, true)}",
+                                maxLines = 1,
+                                style = TextStyle(
+                                    color = GlanceTheme.colors.onSurfaceVariant,
+                                    fontSize = (Type.BODY_SMALL * scale).sp,
+                                ),
+                            )
+                        }
                         Spacer(GlanceModifier.defaultWeight())
                         LinearProgressIndicator(
                             progress = s.window.pctInt / 100f,
