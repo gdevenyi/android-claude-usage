@@ -76,8 +76,16 @@ custom base-URL/proxy mode, i18n (English only).
   Collapsed = the headline percentages, session bar, session countdown;
   expanded = both windows with bars and reset times, the by-model row, and
   the updated-at line. Tap = refresh in place.
+- **Run-out alerts**: an audible notification ("Opus (7d) runs out
+  ~Thu 14:20 — at this pace, it resets Fri 09:00") when the forecast runs
+  a window out before its reset. Any window: session, weekly, per model.
+  Not more than one per window cycle (key: name + rounded reset), even if
+  the risk goes away and comes back. Quiet when the run-out is less than
+  15 min before the reset (`RunOut.MIN_LEAD_MS`). Its own channel and its
+  own switch (on by default), independent of the ongoing notification.
 - **Activity**: settings — Log in/Log out with Claude (status + plan),
-  notification on/off, refresh interval 15/30/60 min — then a **Details**
+  notification on/off, run-out alerts on/off, refresh interval
+  15/30/60 min — then a **Details**
   section for what the widget has no room for, then the charts.
   Details shows the weekly share per product (`seven_day_breakdown.rows`:
   Claude Code, Chats, …) as bars in the primary colour, since a share is

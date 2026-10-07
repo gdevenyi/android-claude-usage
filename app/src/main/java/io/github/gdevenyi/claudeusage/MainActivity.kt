@@ -36,17 +36,26 @@ class MainActivity : AppCompatActivity() {
     private val onPrefChange =
         SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> updateUi() }
 
-    // Field, not inline: updateUi() detaches it while it syncs the switch, so
-    // only a real user toggle — never a programmatic setChecked — asks for
-    // the notification permission.
+    // Fields, not inline: updateUi() detaches them while it syncs the
+    // switches, so only a real user toggle — never a programmatic
+    // setChecked — asks for the notification permission.
     private val onNotifToggle = CompoundButton.OnCheckedChangeListener { _, checked ->
         Store(this).notifEnabled = checked
-        if (checked && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+        if (checked) askNotifPermission()
+        Notif.update(this)
+    }
+
+    private val onAlertToggle = CompoundButton.OnCheckedChangeListener { _, checked ->
+        Store(this).alertsEnabled = checked
+        if (checked) askNotifPermission()
+    }
+
+    private fun askNotifPermission() {
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
-        Notif.update(this)
     }
 
     override fun onStart() {
@@ -138,10 +147,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<MaterialSwitch>(R.id.notifSwitch).setOnCheckedChangeListener(onNotifToggle)
+        findViewById<MaterialSwitch>(R.id.alertSwitch).setOnCheckedChangeListener(onAlertToggle)
         // One automatic ask, on first launch only. Android 13 stops showing
         // the dialog after two denials, so repeated surprise prompts on every
         // start would burn that quota with the switch still reading "on".
-        if (store.notifEnabled && !store.notifAsked &&
+        if ((store.notifEnabled || store.alertsEnabled) && !store.notifAsked &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -203,6 +213,10 @@ class MainActivity : AppCompatActivity() {
         sw.setOnCheckedChangeListener(null)
         sw.isChecked = store.notifEnabled
         sw.setOnCheckedChangeListener(onNotifToggle)
+        val alertSw = findViewById<MaterialSwitch>(R.id.alertSwitch)
+        alertSw.setOnCheckedChangeListener(null)
+        alertSw.isChecked = store.alertsEnabled
+        alertSw.setOnCheckedChangeListener(onAlertToggle)
         updateDetails()
         updateCharts()
     }

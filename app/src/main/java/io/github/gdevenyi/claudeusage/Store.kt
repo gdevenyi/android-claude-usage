@@ -66,6 +66,14 @@ class Store(ctx: Context) {
     var notifAsked: Boolean
         get() = p.getBoolean("notifAsked", false)
         set(v) = p.edit().putBoolean("notifAsked", v).apply()
+    /** Audible alert when the forecast runs a window out before its reset. */
+    var alertsEnabled: Boolean
+        get() = p.getBoolean("alertsEnabled", true)
+        set(v) = p.edit().putBoolean("alertsEnabled", v).apply()
+    /** RunOut keys ("name@reset") already alerted this cycle. */
+    var alerted: Set<String>
+        get() = p.getStringSet("alerted", null).orEmpty().toSet()
+        set(v) = p.edit().putStringSet("alerted", v).apply()
     var intervalMin: Int
         get() = p.getInt("intervalMin", 15)
         set(v) = p.edit().putInt("intervalMin", v).apply()

@@ -51,6 +51,9 @@ object Fmt {
         weekly == null || kotlin.math.abs(it.toEpochMilli() - weekly.toEpochMilli()) > 60_000
     }
 
+    /** A history/prediction key as prose: "session", "weekly", "Opus (7d)". */
+    fun windowName(key: String) = if (key == "session" || key == "weekly") key else "$key (7d)"
+
     /** The " · out ~14:20" tail: the fit's 100% crossing, when it beats the reset. */
     fun outMark(p: History.Prediction?, withDay: Boolean): String =
         p?.takeIf { it.atRisk }?.let { " · out ~${clock(it.runOutAt!!, withDay)}" } ?: ""
@@ -87,6 +90,8 @@ object Notif {
     private const val ID = 1
     private const val RESET_CHANNEL = "reset"
     private const val RESET_ID = 2
+    private const val RUNOUT_CHANNEL = "runout"
+    private const val RUNOUT_ID = 3
 
     fun update(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -129,7 +134,7 @@ object Notif {
             val risk = preds.filterValues { it.atRisk }.minByOrNull { it.value.runOutAt!! }
             text = if (risk != null) {
                 val (name, p) = risk
-                val label = if (name == "session" || name == "weekly") name else "$name (7d)"
+                val label = Fmt.windowName(name)
                 val withDay = p.runOutAt!! - System.currentTimeMillis() > 24 * 3600_000
                 "At this pace, $label runs out ~${Fmt.clock(p.runOutAt, withDay)} " +
                     "(resets ${Fmt.clock(p.resetsAt, withDay)})"
@@ -214,6 +219,51 @@ object Notif {
                 .setAutoCancel(true)
                 .build(),
         )
+    }
+
+    /**
+     * Audible warning, once per window cycle, when the forecast runs a window
+     * out well before its reset. Independent of the ongoing notification:
+     * some want the warning without the permanent entry.
+     */
+    fun runOutAlerts(ctx: Context) {
+        val store = Store(ctx)
+        val now = System.currentTimeMillis()
+        val alerted = RunOut.prune(store.alerted, now)
+        if (!store.alertsEnabled || !store.loggedIn || store.authBroken) {
+            store.alerted = alerted
+            return
+        }
+        if (ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
+        val due = RunOut.due(History.predictions(ctx, now), alerted, now)
+        if (due.isEmpty()) {
+            store.alerted = alerted
+            return
+        }
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(
+            NotificationChannel(RUNOUT_CHANNEL, "Run-out alerts", NotificationManager.IMPORTANCE_DEFAULT)
+        )
+        due.forEach { (name, p) ->
+            val withDay = p.resetsAt - now > 24 * 3600_000
+            // Tagged per window, so two windows at risk don't replace each other.
+            nm.notify(
+                name, RUNOUT_ID,
+                Notification.Builder(ctx, RUNOUT_CHANNEL)
+                    .setSmallIcon(R.drawable.ic_stat)
+                    .setContentTitle(
+                        "${Fmt.windowName(name).replaceFirstChar { it.uppercase() }} " +
+                            "runs out ~${Fmt.clock(p.runOutAt!!, withDay)}"
+                    )
+                    .setContentText("At this pace — it resets ${Fmt.clock(p.resetsAt, withDay)}")
+                    .setContentIntent(openIntent(ctx))
+                    .setAutoCancel(true)
+                    .build(),
+            )
+        }
+        store.alerted = alerted + due.map { (name, p) -> RunOut.key(name, p) }
     }
 
     private fun collapsedView(
